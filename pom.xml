@@ -73,6 +73,16 @@
                 <artifactId>flowable-engine</artifactId>
                 <version>${flowable.version}</version>
             </dependency>
+            <!-- Flowable's own Kafka Event Registry Spring integration: PROVIDED for the same
+                 reason as flowable-engine above. It's Flowable's own public API surface
+                 (KafkaChannelDefinitionProcessor), not internal reflection, and must not become a
+                 second, independently-versioned copy of Flowable code alongside the consumer's own
+                 flowable-spring-boot-starter. -->
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-event-registry-spring</artifactId>
+                <version>${flowable.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.flowable</groupId>
                 <artifactId>flowable-spring-boot-starter</artifactId>

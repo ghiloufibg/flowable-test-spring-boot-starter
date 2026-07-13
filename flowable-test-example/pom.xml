@@ -97,28 +97,17 @@
         </dependency>
     </dependencies>
 
+    <!-- No reuseForks=false surefire override here: broker-scope=shared's
+         FlowableKafkaConsumerLifecycleTestExecutionListener now starts/stops the Kafka Event
+         Registry consumer container(s) per test class boundary, so Surefire's default (one JVM,
+         reused across classes) no longer risks two engines becoming competing consumers in the
+         same group. See claudedocs/kafka-shared-broker-context-isolation-design.md. -->
     <build>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>${spring-boot.version}</version>
-            </plugin>
-
-            <!-- Fresh JVM per test class: the embedded Kafka broker started by
-                 flowable-test-spring-boot-starter is a JVM-wide singleton (at most one per fork,
-                 see EmbeddedFlowableKafkaSupport), so any two test classes here whose
-                 @MockExternalService configuration differs get separate, simultaneously-cached
-                 Spring contexts within the same fork, so both engines would then register as
-                 competing members of the payment-callback Kafka Event Registry channel's consumer
-                 group against that one broker. reuseForks=false gives each class its own broker
-                 instead. -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <reuseForks>false</reuseForks>
-                </configuration>
             </plugin>
         </plugins>
     </build>

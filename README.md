@@ -107,6 +107,23 @@ inbound `"topics"` shapes) — no `@EmbeddedKafka(topics = {...})` list to hand-
 `@Autowired KafkaTestBridge` gives you `send(topic, key, value)` /
 `awaitMessage(topic, predicate, timeout)` without writing raw producer/consumer boilerplate.
 
+By default, the embedded broker is a JVM-wide singleton shared across every Spring context
+(`shared`) — a `TestExecutionListener` starts/stops each context's Flowable-managed inbound Kafka
+Event Registry consumer container(s) at test class boundaries, so at most one context's consumers
+are ever polling at once, even when Spring reuses a JVM across test classes with different
+`@MockExternalService` configurations. Opt into a fresh broker per Spring context instead (no
+lifecycle choreography needed, at the cost of a broker start per context) with
+`flowable.test.kafka.broker-scope=per-context`:
+
+```yaml
+flowable:
+  test:
+    kafka:
+      broker-scope: shared # shared (default) | per-context
+```
+
+See `claudedocs/kafka-shared-broker-context-isolation-design.md` for the full rationale.
+
 ### Declarative HTTP mocking
 
 If `wiremock-standalone` is on your classpath, drop plain WireMock mapping JSON under

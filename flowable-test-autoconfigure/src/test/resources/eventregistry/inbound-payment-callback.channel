@@ -1,0 +1,13 @@
+{
+  "key": "paymentCallbackChannel",
+  "category": "channel",
+  "name": "Payment Callback Inbound Channel",
+  "channelType": "inbound",
+  "type": "kafka",
+  "topics": ["payment-callbacks", "payment-callbacks-retry"],
+  "groupId": "flowable-test-fixture-group",
+  "deserializerType": "json",
+  "channelEventKeyDetection": {
+    "fixedValue": "paymentCallbackEvent"
+  }
+}

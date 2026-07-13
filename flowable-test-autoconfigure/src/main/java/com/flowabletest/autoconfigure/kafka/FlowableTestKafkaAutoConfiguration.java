@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
@@ -31,6 +32,7 @@ public class FlowableTestKafkaAutoConfiguration {
   @Bean(destroyMethod = "")
   @ConditionalOnMissingBean
   @ConditionalOnProperty("spring.kafka.bootstrap-servers")
+  @Conditional(FlowableKafkaBrokerScopeCondition.Shared.class)
   EmbeddedKafkaBroker embeddedKafkaBroker() {
     final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.current();
     if (broker == null) {
@@ -38,6 +40,28 @@ public class FlowableTestKafkaAutoConfiguration {
           "spring.kafka.bootstrap-servers was set but no embedded Kafka broker was started; "
               + "this indicates flowable-test-spring-boot-starter's own EnvironmentPostProcessor "
               + "did not run as expected.");
+    }
+    return broker;
+  }
+
+  /**
+   * {@code destroyMethod = "destroy"} here is the mirror image of {@link #embeddedKafkaBroker()}'s
+   * disabled destroy method: a {@code per-context} broker ({@link
+   * EmbeddedFlowableKafkaSupport#startFresh}) has no JVM shutdown hook of its own, so letting
+   * Spring call {@code destroy()} when *this* context closes is the only cleanup path it gets, not
+   * a double-destroy risk.
+   */
+  @Bean(destroyMethod = "destroy")
+  @ConditionalOnMissingBean
+  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
+  @Conditional(FlowableKafkaBrokerScopeCondition.PerContext.class)
+  EmbeddedKafkaBroker embeddedKafkaBrokerPerContext() {
+    final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.currentPerContext();
+    if (broker == null) {
+      throw new IllegalStateException(
+          "spring.kafka.bootstrap-servers was set but no per-context embedded Kafka broker was "
+              + "started; this indicates flowable-test-spring-boot-starter's own "
+              + "EnvironmentPostProcessor did not run as expected.");
     }
     return broker;
   }

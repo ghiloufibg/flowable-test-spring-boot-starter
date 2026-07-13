@@ -25,6 +25,11 @@ import org.springframework.util.ClassUtils;
  * that {@code ConfigDataEnvironmentPostProcessor} has already loaded {@code application.yml}/{@code
  * application-test.yml} and any consumer overrides of {@code flowable.test.kafka.*} are visible
  * when this class reads them.
+ *
+ * <p>{@code flowable.test.kafka.broker-scope} controls which broker gets started (design: {@code
+ * claudedocs/kafka-shared-broker-context-isolation-design.md}): {@code shared} (the default) reuses
+ * the JVM-wide singleton, {@code per-context} starts a brand-new broker for this context alone. See
+ * {@link FlowableKafkaBrokerScopeCondition}.
  */
 public final class FlowableTestKafkaEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
@@ -57,7 +62,9 @@ public final class FlowableTestKafkaEnvironmentPostProcessor
     final int partitions =
         environment.getProperty("flowable.test.kafka.partitions", Integer.class, 1);
     final EmbeddedKafkaBroker broker =
-        EmbeddedFlowableKafkaSupport.startIfNeeded(topics, partitions);
+        FlowableKafkaBrokerScopeCondition.isShared(environment)
+            ? EmbeddedFlowableKafkaSupport.startIfNeeded(topics, partitions)
+            : EmbeddedFlowableKafkaSupport.startFresh(topics, partitions);
 
     final Map<String, Object> properties = new HashMap<>();
     properties.put("spring.kafka.bootstrap-servers", broker.getBrokersAsString());

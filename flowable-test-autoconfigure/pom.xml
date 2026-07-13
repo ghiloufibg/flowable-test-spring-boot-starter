@@ -33,6 +33,15 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Flowable's Kafka Event Registry Spring integration: provided, same rationale as
+             flowable-engine above. Needed for KafkaChannelDefinitionProcessor.CHANNEL_ID_PREFIX
+             (see kafka-shared-broker-context-isolation-design.md). -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-event-registry-spring</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
@@ -55,6 +64,17 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka-test</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: spring-kafka-test does not itself pull in plain spring-kafka (verified via
+             dependency:tree). Needed for KafkaListenerEndpointRegistry/MessageListenerContainer,
+             used by the broker-scope=shared lifecycle listener. Any real consumer using Flowable's
+             Kafka Event Registry already has this on their runtime classpath regardless (Flowable's
+             own EventRegistryKafkaConfiguration requires KafkaOperations). -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
             <optional>true</optional>
         </dependency>
 
