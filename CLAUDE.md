@@ -122,10 +122,15 @@ consumer's own `RuntimeService`/`TaskService` bean instances by their real type)
 dependency, pinned to `${flowable.version}` (currently 7.1.0) — this is only for the module's own
 internal validation test suite and never leaks to consumers (design doc section 5.5).
 
-When bumping the supported Flowable range, update it in three places that must stay in sync:
+When bumping the supported Flowable range, update it in four places that must stay in sync:
 `flowable.supported.min`/`flowable.supported.maxExclusive` in the root `pom.xml`,
-`FlowableCompatibilityGuardAutoConfiguration.SUPPORTED_MIN_INCLUSIVE`/`SUPPORTED_MAX_EXCLUSIVE`, and
-the README's compatibility table.
+`FlowableCompatibilityGuardAutoConfiguration.SUPPORTED_MIN_INCLUSIVE`/`SUPPORTED_MAX_EXCLUSIVE`, the
+README's compatibility table, and the `flowable-version` matrix in
+`.github/workflows/ci.yml` (oldest + newest supported release, design doc section 5.4) — CI runs
+the full test suite once per matrix entry via `mvn test -Dflowable.version=<version>`, which
+overrides the same `flowable.version` property used for both the `provided`-scope compile
+dependency and the module's own `test`-scope validation engine, so each entry proves the range is
+real rather than just asserted.
 
 ## Scope discipline
 

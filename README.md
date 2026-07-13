@@ -129,6 +129,10 @@ consumer's actual runtime `ProcessEngine.VERSION` against the supported range ab
 with an actionable message if it's outside it, rather than surfacing as an obscure
 `NoSuchMethodError` mid-test.
 
+CI (`.github/workflows/ci.yml`) runs the full test suite once per Flowable release at the ends of
+the supported range (currently `7.0.0` and `7.1.0`), so the range above is empirically verified on
+every push rather than just asserted.
+
 ## Design rationale
 
 See the design doc in the `flowable-bpmn-masterclass` reference project

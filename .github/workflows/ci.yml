@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  format:
+    name: Formatting check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: mvn --batch-mode --no-transfer-progress spotless:check
+
+  test:
+    name: Test (Flowable ${{ matrix.flowable-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest and newest Flowable 7.x releases in the range FlowableCompatibilityGuardAutoConfiguration
+        # claims to support ([7.0.0, 8.0.0), see design doc section 5.4). Keep these two values in sync
+        # with flowable.supported.min/flowable.version in the root pom.xml -- see CLAUDE.md's "Flowable
+        # version isolation" section for the full list of places that must move together.
+        flowable-version: ['7.0.0', '7.1.0']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run test suite against Flowable ${{ matrix.flowable-version }}
+        run: mvn --batch-mode --no-transfer-progress clean test -Dflowable.version=${{ matrix.flowable-version }}
