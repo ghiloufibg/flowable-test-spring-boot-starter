@@ -45,6 +45,31 @@ distinct `@MockExternalService(stubs = ...)` variants in a suite grows.
 - Not addressing findings #3–#5 (fail-fast guidance, `HttpStubConfigurer` mutation risk, typo'd `stubs`
   path) — out of scope per this design's requested pair.
 
+## Follow-up (2026-07-13): findings #3–#5 subsequently closed
+
+All three were fixed in the same session, once the retain/release mechanism above was in place and
+verified:
+
+- **Typo'd `stubs` path** (#5): `EmbeddedFlowableHttpMockSupport.startNewServer` now validates
+  `classpath:<location>/mappings` exists before starting a server, throwing `IllegalStateException`
+  naming the service and location instead of silently serving an empty WireMock instance.
+- **`HttpStubConfigurer` mutation risk** (#4): a configurer now runs at most once per distinct
+  `WireMockServer` *instance* (`EmbeddedFlowableHttpMockSupport.markConfiguredOnce`, an
+  identity-keyed set cleared on `release`), not once per context that retains a shared server —
+  closing the "duplicate stub registration accumulates across contexts" risk called out above.
+- **Fail-fast guidance** (#3), narrowed to the concrete case found: a test class declaring
+  `@MockExternalService` for the same service name twice with different `stubs` previously survived
+  into the customizer's `Set` (they compare unequal) and silently raced on `Set`/`Map` iteration
+  order for which `<name>.base-url` won. `MockExternalServiceContextCustomizerFactory` now throws
+  `IllegalStateException` naming the conflicting service(s) instead.
+
+One case remains intentionally unfixed, and is not a regression: a default-convention folder that
+*every* referencing context always overrides is `ensureStarted` but never `retain`ed by anyone, so
+it's never released mid-run — it falls back to the same JVM-shutdown-hook cleanup every server
+already had before this design. Closing this fully would require moving "retain" ownership earlier
+(into the pre-refresh post-processor/customizer, before either can know about the other), which risks
+double-counting a name that *isn't* overridden; the narrow benefit didn't justify that risk.
+
 ## Component design
 
 ### 1. `EmbeddedFlowableHttpMockSupport` — split "start" from "track usage"

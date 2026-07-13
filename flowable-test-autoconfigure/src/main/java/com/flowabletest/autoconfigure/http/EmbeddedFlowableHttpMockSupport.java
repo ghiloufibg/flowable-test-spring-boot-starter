@@ -2,10 +2,14 @@ package com.flowabletest.autoconfigure.http;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * Starts (at most once per name+location combination, per JVM) the in-process WireMock servers
@@ -30,6 +34,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * irrelevant here since these only fire at context start/close, and a single lock rules out the
  * class of race where a concurrent {@code retain} could observe a server this thread is in the
  * middle of stopping.
+ *
+ * <p>One residual case is intentionally not refcounted: a default-convention folder that every
+ * referencing context always overrides (via {@code @MockExternalService(stubs = ...)}) is {@code
+ * ensureStarted} but never {@code retain}ed by anyone, so it is never released mid-run -- it falls
+ * back to living until the JVM shutdown hook every started server already gets. This is unavoidable
+ * without a size-cap or TTL-based eviction (an explicit non-goal): nothing can prove "no context
+ * will ever plainly use this default" while the suite is still running.
  */
 final class EmbeddedFlowableHttpMockSupport {
 
@@ -38,6 +49,8 @@ final class EmbeddedFlowableHttpMockSupport {
   private static final Map<String, AtomicInteger> REF_COUNTS = new ConcurrentHashMap<>();
   private static final Map<String, Thread> SHUTDOWN_HOOKS = new ConcurrentHashMap<>();
   private static final Map<String, AtomicBoolean> STOPPED = new ConcurrentHashMap<>();
+  private static final Set<WireMockServer> CONFIGURED_ONCE =
+      Collections.newSetFromMap(new IdentityHashMap<>());
 
   private EmbeddedFlowableHttpMockSupport() {}
 
@@ -71,6 +84,9 @@ final class EmbeddedFlowableHttpMockSupport {
       if (server != null && stopped != null && stopped.compareAndSet(false, true)) {
         server.stop();
       }
+      if (server != null) {
+        CONFIGURED_ONCE.remove(server);
+      }
       final Thread hook = SHUTDOWN_HOOKS.remove(key);
       if (hook != null) {
         try {
@@ -84,6 +100,19 @@ final class EmbeddedFlowableHttpMockSupport {
 
   static WireMockServer get(String name, String classpathLocation) {
     return SERVERS.get(key(name, classpathLocation));
+  }
+
+  /**
+   * Returns {@code true} the first time it's called for a given, currently-running server instance,
+   * {@code false} on every subsequent call for that same instance -- lets a caller (the {@code
+   * HttpStubConfigurer} invoker) apply one-time setup to a server that may be shared and re-touched
+   * by many contexts, without repeating that setup (and, for configurers that register stubs,
+   * accumulating duplicate registrations) on every context that merely reuses it.
+   */
+  static boolean markConfiguredOnce(WireMockServer server) {
+    synchronized (LOCK) {
+      return CONFIGURED_ONCE.add(server);
+    }
   }
 
   /**
@@ -102,6 +131,15 @@ final class EmbeddedFlowableHttpMockSupport {
   }
 
   private static WireMockServer startNewServer(String name, String classpathLocation, String key) {
+    if (!new ClassPathResource(classpathLocation + "/mappings").exists()) {
+      throw new IllegalStateException(
+          "No WireMock mappings folder found at classpath:"
+              + classpathLocation
+              + "/mappings for service '"
+              + name
+              + "' -- check for a typo, e.g. in @MockExternalService(stubs = ...), or that the "
+              + "folder exists under src/test/resources.");
+    }
     final WireMockServer server =
         new WireMockServer(
             WireMockConfiguration.options()

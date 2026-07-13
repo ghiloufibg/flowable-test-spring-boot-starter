@@ -52,14 +52,30 @@ public class FlowableTestHttpStubAutoConfiguration {
     return event -> resolved.forEach(EmbeddedFlowableHttpMockSupport::release);
   }
 
+  /**
+   * Configurers only run the first time a given {@code WireMockServer} instance is seen ({@link
+   * EmbeddedFlowableHttpMockSupport#markConfiguredOnce}), not once per context that retains it -- a
+   * shared, JVM-lifetime server would otherwise accumulate a duplicate stub registration from every
+   * context reusing it.
+   */
   @Bean
   InitializingBean httpStubConfigurerInvoker(
       HttpMockServers httpMockServers, ObjectProvider<List<HttpStubConfigurer>> configurers) {
     return () -> {
       final List<HttpStubConfigurer> beans = configurers.getIfAvailable(List::of);
-      for (final HttpStubConfigurer configurer : beans) {
-        httpMockServers.asMap().forEach(configurer::configure);
+      if (beans.isEmpty()) {
+        return;
       }
+      httpMockServers
+          .asMap()
+          .forEach(
+              (name, server) -> {
+                if (EmbeddedFlowableHttpMockSupport.markConfiguredOnce(server)) {
+                  for (final HttpStubConfigurer configurer : beans) {
+                    configurer.configure(name, server);
+                  }
+                }
+              });
     };
   }
 }

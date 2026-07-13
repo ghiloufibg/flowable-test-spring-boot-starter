@@ -1,6 +1,7 @@
 package com.flowabletest.autoconfigure.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
@@ -79,5 +80,16 @@ class EmbeddedFlowableHttpMockSupportLifecycleTest {
 
     assertThat(EmbeddedFlowableHttpMockSupport.refCount(name, overrideLocation)).isZero();
     assertThat(EmbeddedFlowableHttpMockSupport.isRunning(name, overrideLocation)).isFalse();
+  }
+
+  @Test
+  void ensureStartedFailsFastOnATypoedOrMissingMappingsFolder() {
+    assertThatThrownBy(
+            () ->
+                EmbeddedFlowableHttpMockSupport.ensureStarted(
+                    "typo-service", "httpmocks-does-not-exist/typo-service"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("httpmocks-does-not-exist/typo-service")
+        .hasMessageContaining("typo-service");
   }
 }
