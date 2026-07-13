@@ -70,17 +70,21 @@ class OrderProcessTest {
 ### Embedded database
 
 H2 by default — no configuration needed, this is just Spring Boot's own embedded-database
-support. Opt into a Docker-free embedded Postgres (native binary, no container) for
-Postgres-specific SQL:
+support. If `io.zonky.test:embedded-postgres` is on your test classpath, it's auto-detected and
+replaces H2 automatically (a Docker-free, native-binary alternative for delegates that rely on
+Postgres-specific SQL — JSON columns, arrays — that H2's dialect emulation can't cover). No
+configuration needed for this either; just add the dependency.
+
+Override the auto-detection with `flowable.test.datasource.provider`:
 
 ```yaml
 flowable:
   test:
     datasource:
-      provider: embedded-postgres
+      provider: h2 # force H2 even if embedded-postgres is on the classpath
+      # provider: embedded-postgres  # require embedded-postgres explicitly
+      # provider: auto               # default: prefer embedded-postgres when present
 ```
-
-requires `io.zonky.test:embedded-postgres` on your test classpath.
 
 ### Embedded Kafka
 

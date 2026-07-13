@@ -1,0 +1,10 @@
+# Pins this module's own internal validation suite to H2 (design doc section 5.5): the
+# module's build also carries io.zonky.test:embedded-postgres as an optional main dependency,
+# so without this override every test would pick up FlowableTestDatasourceAutoConfiguration's
+# `auto` default and spin up a native Postgres process regardless of what it's actually
+# validating. FlowableTestDatasourceAutoConfigurationTest overrides this per-test to exercise
+# the auto-detection behavior itself.
+flowable:
+  test:
+    datasource:
+      provider: h2

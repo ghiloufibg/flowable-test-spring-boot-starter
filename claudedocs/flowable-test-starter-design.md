@@ -40,11 +40,11 @@ Consumers add one dependency (`flowable-test-spring-boot-starter`, `test` scope)
 
 ### 4.1 Embedded DB — always on, pluggable fidelity
 
-**Decision: H2 by default, `embedded-postgres` opt-in.**
+**Decision: H2 fallback, `embedded-postgres` auto-detected.**
 
-- Default: H2 in-memory, matching this repo's existing `OrderProcessTest` setup. Fast startup, no external process.
-- Opt-in: `io.zonky.test:embedded-postgres` (downloads a native Postgres binary, runs it as a local OS process — **no Docker**) for projects whose delegates rely on Postgres-specific SQL (JSON columns, arrays) where H2's dialect emulation isn't enough. This is the direct, Docker-free replacement for `OrderProcessScenariosTest`'s Testcontainers `PostgreSQLContainer`.
-- Switched via `flowable.test.datasource.provider=h2|embedded-postgres`, both wired as regular `DataSource` beans — no `@DynamicPropertySource` boilerplate required in the consumer's test class.
+- Fallback: H2 in-memory, matching this repo's existing `OrderProcessTest` setup. Fast startup, no external process. Wired by Spring Boot's own `DataSourceAutoConfiguration`, not this starter.
+- Auto-detected: if `io.zonky.test:embedded-postgres` (downloads a native Postgres binary, runs it as a local OS process — **no Docker**) is on the consumer's test classpath, `FlowableTestDatasourceAutoConfiguration` picks it automatically and it replaces H2 — no property needed. For projects whose delegates rely on Postgres-specific SQL (JSON columns, arrays) where H2's dialect emulation isn't enough. This is the direct, Docker-free replacement for `OrderProcessScenariosTest`'s Testcontainers `PostgreSQLContainer`.
+- `flowable.test.datasource.provider` overrides the auto-detection: `auto` (default, prefer embedded-postgres when present) `|h2` (force H2 even if embedded-postgres is present) `|embedded-postgres` (require it). `EmbeddedPostgresPreferredCondition` implements the three-way choice; both providers are wired as regular `DataSource` beans — no `@DynamicPropertySource` boilerplate required in the consumer's test class. `FlowableTestDatasourceAutoConfiguration` runs `@AutoConfigureBefore(DataSourceAutoConfiguration.class)` so its embedded-Postgres bean is already present by the time Spring Boot's own `@ConditionalOnMissingBean(DataSource.class)` for H2 is evaluated.
 
 ### 4.2 Embedded Kafka — auto-discovers topics from Flowable's own Event Registry files
 
