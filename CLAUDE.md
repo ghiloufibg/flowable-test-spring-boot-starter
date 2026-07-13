@@ -139,3 +139,101 @@ stub definitions, it doesn't belong in this starter.
 Freshly scaffolded — every capability has a passing internal validation test in
 `flowable-test-autoconfigure`, but the starter has not yet been exercised against a real external
 consumer project.
+
+## 🎯 Code Quality Standards
+
+### CRITICAL: Java 21 LTS - Project Standard
+
+**This project uses Java 21 LTS exclusively.**
+
+All generated code MUST use modern Java 21 features:
+- Records for immutable data structures
+- Pattern matching for instanceof and switch
+- Text blocks for multi-line strings
+- Sealed classes for restricted hierarchies
+- Virtual threads for concurrency
+- Enhanced switch expressions
+- Local variable type inference (var) where it improves readability
+
+**NO Java 22+ only features** - maintain Java 21 LTS compatibility
+
+### 1. CLARITY
+Code must be self-explanatory with clear intent:
+- Use descriptive names for classes, methods, and variables
+- Code should read like well-written prose
+- Intent should be immediately obvious without documentation
+
+### 2. CLEANLINESS
+Follow clean code principles:
+- Single Responsibility Principle for classes and methods
+- No code duplication (DRY principle)
+- Proper separation of concerns
+- Consistent formatting and style
+
+### 3. READABILITY
+Code must be easy to read and understand:
+- Use meaningful variable and method names
+- Keep methods short and focused (ideally under 20 lines)
+- Proper indentation and spacing
+- Clear control flow without deeply nested structures
+
+**CRITICAL: No Fully Qualified Names (FQN)**
+- **NEVER use fully qualified class names in code** - this is ugly and reduces readability
+- Always add proper import statements at the top of the file instead
+- This applies to ALL code: production, tests, annotations, and configuration
+
+**Prohibited Examples:**
+```java
+// ❌ WRONG - Ugly FQN usage
+java.util.List<String> items = new java.util.ArrayList<>();
+reactor.core.publisher.Flux<Data> flux = reactor.core.publisher.Flux.empty();
+@SpringBootTest(classes = {com.example.config.AppConfig.class})
+new com.example.service.MyService();
+
+// ✅ CORRECT - Use imports
+import java.util.List;
+import java.util.ArrayList;
+import reactor.core.publisher.Flux;
+import com.example.config.AppConfig;
+import com.example.service.MyService;
+
+List<String> items = new ArrayList<>();
+Flux<Data> flux = Flux.empty();
+@SpringBootTest(classes = {AppConfig.class})
+new MyService();
+```
+
+**Exception:** Only use FQN to resolve naming conflicts between different packages:
+```java
+// ✅ Acceptable - Resolving naming conflict
+import java.util.Date;
+java.sql.Date sqlDate = new java.sql.Date(System.currentTimeMillis());
+```
+
+**Enforcement:**
+- Review all code for FQN before committing
+- Check annotations (especially `@SpringBootTest`, `@Import`, etc.)
+- Check object instantiations and static method calls
+- Check generic type parameters
+
+### 4. PRODUCTION-READY
+Code must be robust and maintainable:
+- Proper error handling and validation
+- No hardcoded values or magic numbers
+- Consider edge cases
+- Thread-safe where applicable
+- Performance-conscious but favor clarity over premature optimization
+
+### 5. ENCAPSULATION & IMMUTABILITY
+Enforce by default whenever possible:
+- All class fields should be `private final` where possible
+- All constructors should be marked `final` (implicit for non-abstract classes)
+- All local variables should be marked `final`
+- Prefer immutable data structures (records, List.of(), Set.of(), Map.of())
+- Use defensive copying when returning mutable objects
+
+**EXCEPTION: Spring Configuration Classes**
+- Classes annotated with `@Configuration` MUST NOT be marked `final`
+- Spring requires non-final classes to create CGLIB proxies for bean methods
+- This applies to: `@Configuration`, `@ConfigurationProperties`
+- Example: `public class DangerousPatternsConfig` (NOT `public final class`)
