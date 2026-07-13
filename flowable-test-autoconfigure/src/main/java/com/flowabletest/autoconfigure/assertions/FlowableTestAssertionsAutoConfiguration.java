@@ -13,20 +13,22 @@ import org.springframework.context.annotation.Bean;
 
 /**
  * Registers {@link ProcessTestHarness} around the consumer's own Flowable engine beans. Always
- * active once a {@code ProcessEngine} exists -- unlike Kafka/HTTP mocking, this capability has
- * no optional third-party dependency to gate on (design doc section 4.4/4.5).
+ * active once a {@code ProcessEngine} exists -- unlike Kafka/HTTP mocking, this capability has no
+ * optional third-party dependency to gate on (design doc section 4.4/4.5).
  */
-@AutoConfiguration(afterName = {
-        "org.flowable.spring.boot.ProcessEngineAutoConfiguration",
-        "org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration"
-})
+@AutoConfiguration(
+    afterName = {
+      "org.flowable.spring.boot.ProcessEngineAutoConfiguration",
+      "org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration"
+    })
 @ConditionalOnClass(name = "org.flowable.engine.RuntimeService")
 @ConditionalOnBean(ProcessEngine.class)
 public class FlowableTestAssertionsAutoConfiguration {
 
-    @Bean
-    @ConditionalOnMissingBean
-    ProcessTestHarness processTestHarness(RuntimeService runtimeService, TaskService taskService, HistoryService historyService) {
-        return new ProcessTestHarness(runtimeService, taskService, historyService);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  ProcessTestHarness processTestHarness(
+      RuntimeService runtimeService, TaskService taskService, HistoryService historyService) {
+    return new ProcessTestHarness(runtimeService, taskService, historyService);
+  }
 }
