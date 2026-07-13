@@ -109,7 +109,10 @@ If `wiremock-standalone` is on your classpath, drop plain WireMock mapping JSON 
 
 `@MockExternalService(name = "payment-gateway", stubs = "classpath:httpmocks/payment-gateway-timeout")`
 on a specific test class redirects just that class to an alternate stub folder (e.g. to simulate a
-failure path), without touching the shared default.
+failure path), without touching the shared default. The autowired `HttpMockServers` bean always
+reflects whichever server a test class's own `@MockExternalService` override (if any) actually
+points at, and each WireMock server's lifetime is tied to the Spring test contexts that reference
+it rather than the whole JVM — it's freed once the last referencing context closes.
 
 ### Process assertions / harness
 

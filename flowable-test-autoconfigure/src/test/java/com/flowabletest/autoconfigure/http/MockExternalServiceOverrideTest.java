@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.annotation.MockExternalService;
+import com.flowabletest.core.http.HttpMockServers;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -24,6 +25,7 @@ import org.springframework.core.env.Environment;
 class MockExternalServiceOverrideTest {
 
   @Autowired Environment environment;
+  @Autowired HttpMockServers httpMockServers;
 
   @Test
   void usesTheAlternateStubFolderInsteadOfTheConventionDefault() throws Exception {
@@ -36,5 +38,14 @@ class MockExternalServiceOverrideTest {
                 HttpResponse.BodyHandlers.ofString());
 
     assertThat(response.body()).contains("hi from ALT demo-service");
+  }
+
+  @Test
+  void httpMockServersResolvesTheSameOverridingServerAsTheBaseUrlProperty() {
+    final String baseUrl = environment.getProperty("demo-service.base-url");
+
+    final int resolvedPort = httpMockServers.get("demo-service").port();
+
+    assertThat("http://localhost:" + resolvedPort).isEqualTo(baseUrl);
   }
 }

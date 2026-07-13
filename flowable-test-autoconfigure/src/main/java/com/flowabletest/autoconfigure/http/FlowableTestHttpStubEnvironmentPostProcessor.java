@@ -60,7 +60,7 @@ public final class FlowableTestHttpStubEnvironmentPostProcessor
     for (final Map.Entry<String, String> entry : services.entrySet()) {
       final String name = entry.getKey();
       final String location = entry.getValue();
-      final WireMockServer server = EmbeddedFlowableHttpMockSupport.startIfNeeded(name, location);
+      final WireMockServer server = EmbeddedFlowableHttpMockSupport.ensureStarted(name, location);
       properties.put(name + ".base-url", "http://localhost:" + server.port());
     }
     properties.put(
