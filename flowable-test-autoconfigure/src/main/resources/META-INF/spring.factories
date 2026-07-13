@@ -3,4 +3,5 @@ com.flowabletest.autoconfigure.kafka.FlowableTestKafkaEnvironmentPostProcessor,\
 com.flowabletest.autoconfigure.http.FlowableTestHttpStubEnvironmentPostProcessor
 
 org.springframework.test.context.ContextCustomizerFactory=\
-com.flowabletest.autoconfigure.http.MockExternalServiceContextCustomizerFactory
+com.flowabletest.autoconfigure.http.MockExternalServiceContextCustomizerFactory,\
+com.flowabletest.autoconfigure.kafka.EmbeddedFlowableKafkaContextCustomizerFactory
