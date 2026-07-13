@@ -36,6 +36,13 @@ import org.springframework.context.annotation.Conditional;
  * consumer's test profile hardcodes an H2 dialect, switching providers means removing that override
  * too (Hibernate 6 auto-detects the dialect from the JDBC connection when none is explicitly
  * configured).
+ *
+ * <p>{@code flowable.test.datasource.embedded-postgres.instance-scope} additionally controls *how*
+ * the embedded-postgres provider allocates its server process (design: {@code
+ * claudedocs/embedded-postgres-instance-scope-design.md}): {@code per-context} (the default) forks
+ * a fresh native process for every Spring context, exactly as below; {@code shared} starts at most
+ * one process per JVM via {@link EmbeddedPostgresSupport} and provisions a fresh logical database
+ * per context on top of it. See {@link EmbeddedPostgresInstanceScopeCondition}.
  */
 @AutoConfiguration
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)
@@ -44,16 +51,34 @@ public class FlowableTestDatasourceAutoConfiguration {
 
   @Bean(destroyMethod = "close")
   @ConditionalOnClass(EmbeddedPostgres.class)
-  @Conditional(EmbeddedPostgresPreferredCondition.class)
+  @Conditional({
+    EmbeddedPostgresPreferredCondition.class,
+    EmbeddedPostgresInstanceScopeCondition.PerContext.class
+  })
   EmbeddedPostgres embeddedPostgres() throws IOException {
     return EmbeddedPostgres.builder().start();
   }
 
   @Bean
   @ConditionalOnClass(EmbeddedPostgres.class)
-  @Conditional(EmbeddedPostgresPreferredCondition.class)
+  @Conditional({
+    EmbeddedPostgresPreferredCondition.class,
+    EmbeddedPostgresInstanceScopeCondition.PerContext.class
+  })
   @ConditionalOnMissingBean(DataSource.class)
   DataSource embeddedPostgresDataSource(EmbeddedPostgres embeddedPostgres) {
     return embeddedPostgres.getPostgresDatabase();
+  }
+
+  @Bean(destroyMethod = "")
+  @ConditionalOnClass(EmbeddedPostgres.class)
+  @Conditional({
+    EmbeddedPostgresPreferredCondition.class,
+    EmbeddedPostgresInstanceScopeCondition.Shared.class
+  })
+  @ConditionalOnMissingBean(DataSource.class)
+  DataSource embeddedPostgresSharedDataSource() {
+    final EmbeddedPostgres server = EmbeddedPostgresSupport.sharedServer();
+    return EmbeddedPostgresSupport.freshDatabase(server);
   }
 }

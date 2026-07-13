@@ -86,6 +86,19 @@ flowable:
       # provider: auto               # default: prefer embedded-postgres when present
 ```
 
+By default, embedded-postgres forks a fresh native process per Spring context (`per-context`).
+Opt into a single JVM-wide server shared across contexts — each still gets its own isolated logical
+database — with `flowable.test.datasource.embedded-postgres.instance-scope=shared`:
+
+```yaml
+flowable:
+  test:
+    datasource:
+      provider: embedded-postgres
+      embedded-postgres:
+        instance-scope: shared # per-context (default) | shared
+```
+
 ### Embedded Kafka
 
 If `spring-kafka-test` is on your classpath, topics are discovered automatically by scanning your

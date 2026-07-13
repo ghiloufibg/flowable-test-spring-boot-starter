@@ -66,4 +66,31 @@ class FlowableTestDatasourceAutoConfigurationTest {
       }
     }
   }
+
+  /**
+   * End-to-end proof, via a real {@code @FlowableProcessTest} context, that {@code
+   * instance-scope=shared} (design: {@code claudedocs/embedded-postgres-instance-scope-design.md})
+   * still resolves to a working, isolated Postgres database -- {@link
+   * EmbeddedPostgresInstanceScopeTest} covers the JVM-wide-singleton/isolation mechanics directly,
+   * this nested class just confirms the property wires up correctly through the full
+   * autoconfiguration + Spring Boot stack.
+   */
+  @Nested
+  @FlowableProcessTest(
+      classes = SampleFlowableApplication.class,
+      properties = {
+        "flowable.test.datasource.provider=embedded-postgres",
+        "flowable.test.datasource.embedded-postgres.instance-scope=shared"
+      })
+  class SharedInstanceScope {
+
+    @Autowired DataSource dataSource;
+
+    @Test
+    void usesTheSharedEmbeddedPostgresServer() throws Exception {
+      try (Connection connection = dataSource.getConnection()) {
+        assertThat(connection.getMetaData().getDatabaseProductName()).isEqualTo("PostgreSQL");
+      }
+    }
+  }
 }
