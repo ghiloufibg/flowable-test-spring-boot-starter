@@ -39,6 +39,9 @@
         <wiremock.version>3.9.1</wiremock.version>
         <embedded-postgres.version>2.0.7</embedded-postgres.version>
         <assertj.version>3.26.3</assertj.version>
+
+        <spotless.version>2.44.5</spotless.version>
+        <google-java-format.version>1.27.0</google-java-format.version>
     </properties>
 
     <dependencyManagement>
@@ -105,5 +108,33 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <!-- Google Java Format, applied/enforced across every reactor module via inheritance.
+                 Run `mvn spotless:apply` to format, `mvn spotless:check` (bound to verify below)
+                 to validate. Requires the JPMS compiler-internals flags in .mvn/jvm.config since
+                 this build runs on JDK 17+ and google-java-format reaches into javac internals. -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>${google-java-format.version}</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
 </project>
