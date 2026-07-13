@@ -45,11 +45,11 @@ class ProcessTestHarnessTest {
 
   @Test
   void completingTheSingleTaskEndsTheProcess() {
-    ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
 
     harness.assertThat(instance.getId()).isActive();
 
-    Task task = harness.completeSingleTask(instance.getId(), "reviewers", Map.of());
+    final Task task = harness.completeSingleTask(instance.getId(), "reviewers", Map.of());
     assertThat(task.getName()).isEqualTo("Review");
 
     harness.assertThat(instance.getId()).hasEndedAt("endEvent");
@@ -57,9 +57,9 @@ class ProcessTestHarnessTest {
 
   @Test
   void awaitTaskForCandidateGroupPollsUntilTheTaskAppears() {
-    ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
 
-    Task task =
+    final Task task =
         harness.awaitTaskForCandidateGroup(instance.getId(), "reviewers", Duration.ofSeconds(5));
 
     assertThat(task.getName()).isEqualTo("Review");

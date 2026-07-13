@@ -20,17 +20,17 @@ final class EmbeddedFlowableKafkaSupport {
   private EmbeddedFlowableKafkaSupport() {}
 
   static EmbeddedKafkaBroker startIfNeeded(Set<String> topics, int partitions) {
-    EmbeddedKafkaBroker existing = broker;
+    final EmbeddedKafkaBroker existing = broker;
     if (existing != null) {
       return existing;
     }
     synchronized (LOCK) {
       if (broker == null) {
-        EmbeddedKafkaBroker started =
+        final EmbeddedKafkaBroker started =
             new EmbeddedKafkaKraftBroker(1, partitions, topics.toArray(new String[0]));
         try {
           started.afterPropertiesSet();
-        } catch (Exception e) {
+        } catch (final Exception e) {
           throw new IllegalStateException("Failed to start the embedded Kafka broker", e);
         }
         Runtime.getRuntime()

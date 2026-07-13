@@ -34,9 +34,9 @@ class FlowableTestHttpStubAutoConfigurationTest {
 
   @Test
   void theDeclarativeStubActuallyServesTheConfiguredResponse() throws Exception {
-    String baseUrl = environment.getProperty("demo-service.base-url");
+    final String baseUrl = environment.getProperty("demo-service.base-url");
 
-    HttpResponse<String> response =
+    final HttpResponse<String> response =
         HttpClient.newHttpClient()
             .send(
                 HttpRequest.newBuilder(URI.create(baseUrl + "/hello")).GET().build(),

@@ -10,12 +10,10 @@ import java.util.Map;
  * bean whose own type happens to be that Map" -- so a directly-exposed Map bean is never found by
  * consumers autowiring that generic type. Wrapping it sidesteps that Spring behavior entirely.
  */
-public final class HttpMockServers {
+public record HttpMockServers(Map<String, WireMockServer> servers) {
 
-  private final Map<String, WireMockServer> servers;
-
-  public HttpMockServers(Map<String, WireMockServer> servers) {
-    this.servers = Map.copyOf(servers);
+  public HttpMockServers {
+    servers = Map.copyOf(servers);
   }
 
   public WireMockServer get(String serviceName) {

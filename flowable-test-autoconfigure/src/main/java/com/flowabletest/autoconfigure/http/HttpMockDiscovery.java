@@ -15,7 +15,7 @@ import org.springframework.core.io.support.ResourcePatternResolver;
  * "list a directory") is what makes this work identically whether resources are read from {@code
  * target/test-classes} on disk or packaged inside a jar.
  */
-public class HttpMockDiscovery {
+public final class HttpMockDiscovery {
 
   private final ResourcePatternResolver resourcePatternResolver;
 
@@ -28,29 +28,30 @@ public class HttpMockDiscovery {
    *     "payment-gateway" -> "httpmocks/payment-gateway"
    */
   public Map<String, String> discoverDefaultServices(String root) {
-    String rawRoot = stripClasspathPrefix(root);
-    Map<String, String> services = new LinkedHashMap<>();
-    Pattern serviceNamePattern = Pattern.compile(Pattern.quote(rawRoot) + "/([^/]+)/mappings/");
+    final String rawRoot = stripClasspathPrefix(root);
+    final Map<String, String> services = new LinkedHashMap<>();
+    final Pattern serviceNamePattern =
+        Pattern.compile(Pattern.quote(rawRoot) + "/([^/]+)/mappings/");
 
     try {
-      Resource[] resources =
+      final Resource[] resources =
           resourcePatternResolver.getResources("classpath*:" + rawRoot + "/*/mappings/**");
-      for (Resource resource : resources) {
+      for (final Resource resource : resources) {
         if (!resource.isReadable()) {
           continue;
         }
-        String url = resource.getURL().toString();
-        Matcher matcher = serviceNamePattern.matcher(url);
+        final String url = resource.getURL().toString();
+        final Matcher matcher = serviceNamePattern.matcher(url);
         if (matcher.find()) {
-          String name = matcher.group(1);
+          final String name = matcher.group(1);
           services.putIfAbsent(name, rawRoot + "/" + name);
         }
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new IllegalStateException(
           "Failed to scan for HTTP mock service folders under '" + root + "'", e);
     }
-    return services;
+    return Map.copyOf(services);
   }
 
   static String stripClasspathPrefix(String root) {

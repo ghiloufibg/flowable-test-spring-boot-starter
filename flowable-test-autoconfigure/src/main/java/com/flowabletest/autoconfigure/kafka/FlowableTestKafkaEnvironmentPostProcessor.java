@@ -26,7 +26,7 @@ import org.springframework.util.ClassUtils;
  * application-test.yml} and any consumer overrides of {@code flowable.test.kafka.*} are visible
  * when this class reads them.
  */
-public class FlowableTestKafkaEnvironmentPostProcessor
+public final class FlowableTestKafkaEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
 
   private static final String PROPERTY_SOURCE_NAME = "flowableTestEmbeddedKafka";
@@ -45,19 +45,21 @@ public class FlowableTestKafkaEnvironmentPostProcessor
       return;
     }
 
-    EventRegistryChannelScanner scanner =
+    final EventRegistryChannelScanner scanner =
         new EventRegistryChannelScanner(new PathMatchingResourcePatternResolver());
-    String channelLocation =
+    final String channelLocation =
         environment.getProperty("flowable.test.kafka.channel-location", "classpath*:**/*.channel");
-    Set<String> topics = scanner.discoverKafkaTopics(channelLocation);
+    final Set<String> topics = scanner.discoverKafkaTopics(channelLocation);
     if (topics.isEmpty()) {
       return;
     }
 
-    int partitions = environment.getProperty("flowable.test.kafka.partitions", Integer.class, 1);
-    EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.startIfNeeded(topics, partitions);
+    final int partitions =
+        environment.getProperty("flowable.test.kafka.partitions", Integer.class, 1);
+    final EmbeddedKafkaBroker broker =
+        EmbeddedFlowableKafkaSupport.startIfNeeded(topics, partitions);
 
-    Map<String, Object> properties = new HashMap<>();
+    final Map<String, Object> properties = new HashMap<>();
     properties.put("spring.kafka.bootstrap-servers", broker.getBrokersAsString());
     environment
         .getPropertySources()

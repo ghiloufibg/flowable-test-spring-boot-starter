@@ -4,7 +4,6 @@ import com.flowabletest.core.annotation.MockExternalService;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
@@ -20,33 +19,28 @@ import org.springframework.test.context.MergedContextConfiguration;
  * Spring's {@code MergedContextConfiguration} considers when deciding whether two test classes can
  * share a cached {@code ApplicationContext} -- so two test classes with different overrides would
  * otherwise silently share one context and whichever ran first would "win" for both. {@code
- * ContextCustomizer} instances explicitly participate in that cache key via {@link
- * #equals(Object)}/{@link #hashCode()}, so a differing override set correctly forces a separate
- * context.
+ * ContextCustomizer} instances explicitly participate in that cache key via {@code equals}/{@code
+ * hashCode}, which this record derives automatically from {@code overrides}, so a differing
+ * override set correctly forces a separate context.
  *
  * <p>Runs during context preparation, before {@code refresh()} -- late enough that this overwrites
  * (via {@code addFirst}) whatever base-url the default convention scan already set for the same
  * service name, but still early enough for property placeholder resolution during bean creation to
  * see the override.
  */
-final class MockExternalServiceContextCustomizer implements ContextCustomizer {
-
-  private final Set<MockExternalService> overrides;
-
-  MockExternalServiceContextCustomizer(Set<MockExternalService> overrides) {
-    this.overrides = overrides;
-  }
+record MockExternalServiceContextCustomizer(Set<MockExternalService> overrides)
+    implements ContextCustomizer {
 
   @Override
   public void customizeContext(
       ConfigurableApplicationContext context, MergedContextConfiguration mergedConfig) {
-    Map<String, Object> properties = new HashMap<>();
-    for (MockExternalService override : overrides) {
-      String location =
+    final Map<String, Object> properties = new HashMap<>();
+    for (final MockExternalService override : overrides) {
+      final String location =
           override.stubs().isBlank()
               ? "httpmocks/" + override.name()
               : HttpMockDiscovery.stripClasspathPrefix(override.stubs());
-      WireMockServer server =
+      final WireMockServer server =
           EmbeddedFlowableHttpMockSupport.startIfNeeded(override.name(), location);
       properties.put(override.name() + ".base-url", "http://localhost:" + server.port());
     }
@@ -54,16 +48,5 @@ final class MockExternalServiceContextCustomizer implements ContextCustomizer {
         .getEnvironment()
         .getPropertySources()
         .addFirst(new MapPropertySource("flowableTestHttpMocksOverride", properties));
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    return obj instanceof MockExternalServiceContextCustomizer other
-        && overrides.equals(other.overrides);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(overrides);
   }
 }

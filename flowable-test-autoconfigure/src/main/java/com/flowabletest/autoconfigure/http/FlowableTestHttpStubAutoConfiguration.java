@@ -27,15 +27,15 @@ public class FlowableTestHttpStubAutoConfiguration {
   @Bean
   @ConditionalOnMissingBean
   HttpMockServers httpMockServers(Environment environment) {
-    String discovered = environment.getProperty("flowable.test.http-mocks.discovered", "");
-    Map<String, WireMockServer> servers = new LinkedHashMap<>();
+    final String discovered = environment.getProperty("flowable.test.http-mocks.discovered", "");
+    final Map<String, WireMockServer> servers = new LinkedHashMap<>();
     if (!discovered.isBlank()) {
-      for (String pair : discovered.split(",")) {
-        String[] parts = pair.split("=", 2);
+      for (final String pair : discovered.split(",")) {
+        final String[] parts = pair.split("=", 2);
         if (parts.length != 2) {
           continue;
         }
-        WireMockServer server = EmbeddedFlowableHttpMockSupport.get(parts[0], parts[1]);
+        final WireMockServer server = EmbeddedFlowableHttpMockSupport.get(parts[0], parts[1]);
         if (server != null) {
           servers.put(parts[0], server);
         }
@@ -48,8 +48,8 @@ public class FlowableTestHttpStubAutoConfiguration {
   InitializingBean httpStubConfigurerInvoker(
       HttpMockServers httpMockServers, ObjectProvider<List<HttpStubConfigurer>> configurers) {
     return () -> {
-      List<HttpStubConfigurer> beans = configurers.getIfAvailable(List::of);
-      for (HttpStubConfigurer configurer : beans) {
+      final List<HttpStubConfigurer> beans = configurers.getIfAvailable(List::of);
+      for (final HttpStubConfigurer configurer : beans) {
         httpMockServers.asMap().forEach(configurer::configure);
       }
     };

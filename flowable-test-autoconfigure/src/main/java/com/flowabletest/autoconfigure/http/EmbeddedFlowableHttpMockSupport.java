@@ -25,7 +25,7 @@ final class EmbeddedFlowableHttpMockSupport {
     return SERVERS.computeIfAbsent(
         key(name, classpathLocation),
         k -> {
-          WireMockServer server =
+          final WireMockServer server =
               new WireMockServer(
                   WireMockConfiguration.options()
                       .dynamicPort()

@@ -39,10 +39,10 @@ class FlowableTestKafkaAutoConfigurationTest {
 
   @Test
   void kafkaTestBridgeCanSendAndAwaitAMessage() {
-    String marker = UUID.randomUUID().toString();
+    final String marker = UUID.randomUUID().toString();
     kafkaTestBridge.send("order-events", "key-1", "{\"marker\":\"" + marker + "\"}");
 
-    String received =
+    final String received =
         kafkaTestBridge.awaitMessage(
             "order-events", value -> value.contains(marker), Duration.ofSeconds(15));
 

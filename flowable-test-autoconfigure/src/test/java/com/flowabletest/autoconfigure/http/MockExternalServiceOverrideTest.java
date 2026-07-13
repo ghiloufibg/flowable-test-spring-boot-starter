@@ -16,8 +16,8 @@ import org.springframework.core.env.Environment;
 /**
  * Proves {@link MockExternalService} redirects a specific test class to an alternate stub folder
  * (design doc section 4.3's escape hatch), instead of the shared {@code httpmocks/demo-service}
- * default that {@link FlowableTestHttpStubAutoConfigurationIT} uses -- both are "demo-service" but
- * must resolve to different content.
+ * default that {@link FlowableTestHttpStubAutoConfigurationTest} uses -- both are "demo-service"
+ * but must resolve to different content.
  */
 @FlowableProcessTest(classes = SampleFlowableApplication.class)
 @MockExternalService(name = "demo-service", stubs = "classpath:httpmocks-alt/demo-service")
@@ -27,9 +27,9 @@ class MockExternalServiceOverrideTest {
 
   @Test
   void usesTheAlternateStubFolderInsteadOfTheConventionDefault() throws Exception {
-    String baseUrl = environment.getProperty("demo-service.base-url");
+    final String baseUrl = environment.getProperty("demo-service.base-url");
 
-    HttpResponse<String> response =
+    final HttpResponse<String> response =
         HttpClient.newHttpClient()
             .send(
                 HttpRequest.newBuilder(URI.create(baseUrl + "/hello")).GET().build(),

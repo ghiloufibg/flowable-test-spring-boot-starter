@@ -26,7 +26,7 @@ import org.springframework.util.ClassUtils;
  * MockExternalServiceContextCustomizer} -- see its Javadoc for why that requires a different Spring
  * TestContext extension point than this class.
  */
-public class FlowableTestHttpStubEnvironmentPostProcessor
+public final class FlowableTestHttpStubEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
 
   private static final String PROPERTY_SOURCE_NAME = "flowableTestHttpMocks";
@@ -45,19 +45,22 @@ public class FlowableTestHttpStubEnvironmentPostProcessor
       return;
     }
 
-    String root = environment.getProperty("flowable.test.http-mocks.root", "classpath:httpmocks");
-    HttpMockDiscovery discovery = new HttpMockDiscovery(new PathMatchingResourcePatternResolver());
-    Map<String, String> services = new LinkedHashMap<>(discovery.discoverDefaultServices(root));
+    final String root =
+        environment.getProperty("flowable.test.http-mocks.root", "classpath:httpmocks");
+    final HttpMockDiscovery discovery =
+        new HttpMockDiscovery(new PathMatchingResourcePatternResolver());
+    final Map<String, String> services =
+        new LinkedHashMap<>(discovery.discoverDefaultServices(root));
 
     if (services.isEmpty()) {
       return;
     }
 
-    Map<String, Object> properties = new HashMap<>();
-    for (Map.Entry<String, String> entry : services.entrySet()) {
-      String name = entry.getKey();
-      String location = entry.getValue();
-      WireMockServer server = EmbeddedFlowableHttpMockSupport.startIfNeeded(name, location);
+    final Map<String, Object> properties = new HashMap<>();
+    for (final Map.Entry<String, String> entry : services.entrySet()) {
+      final String name = entry.getKey();
+      final String location = entry.getValue();
+      final WireMockServer server = EmbeddedFlowableHttpMockSupport.startIfNeeded(name, location);
       properties.put(name + ".base-url", "http://localhost:" + server.port());
     }
     properties.put(

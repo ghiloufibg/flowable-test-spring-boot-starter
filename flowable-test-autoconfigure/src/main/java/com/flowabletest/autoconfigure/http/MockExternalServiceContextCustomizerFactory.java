@@ -14,12 +14,12 @@ import org.springframework.test.context.ContextCustomizerFactory;
  * MockExternalServiceContextCustomizer} for why this SPI, not an {@code EnvironmentPostProcessor},
  * is what implements {@link MockExternalService}.
  */
-public class MockExternalServiceContextCustomizerFactory implements ContextCustomizerFactory {
+public final class MockExternalServiceContextCustomizerFactory implements ContextCustomizerFactory {
 
   @Override
   public ContextCustomizer createContextCustomizer(
       Class<?> testClass, List<ContextConfigurationAttributes> configAttributes) {
-    Set<MockExternalService> overrides =
+    final Set<MockExternalService> overrides =
         AnnotatedElementUtils.findMergedRepeatableAnnotations(testClass, MockExternalService.class);
     return overrides.isEmpty() ? null : new MockExternalServiceContextCustomizer(overrides);
   }

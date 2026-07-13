@@ -18,7 +18,7 @@ import org.flowable.task.api.Task;
  * process instance IDs, activity IDs, and candidate group names -- never a domain-specific concept
  * (design doc section 4.4).
  */
-public class ProcessTestHarness {
+public final class ProcessTestHarness {
 
   private static final Duration DEFAULT_POLL_INTERVAL = Duration.ofMillis(200);
 
@@ -42,7 +42,7 @@ public class ProcessTestHarness {
    * if there isn't exactly one.
    */
   public Task findSingleTask(String processInstanceId, String candidateGroup) {
-    List<Task> tasks =
+    final List<Task> tasks =
         taskService
             .createTaskQuery()
             .processInstanceId(processInstanceId)
@@ -66,7 +66,7 @@ public class ProcessTestHarness {
    */
   public Task completeSingleTask(
       String processInstanceId, String candidateGroup, Map<String, Object> variables) {
-    Task task = findSingleTask(processInstanceId, candidateGroup);
+    final Task task = findSingleTask(processInstanceId, candidateGroup);
     taskService.complete(task.getId(), variables);
     return task;
   }
@@ -99,7 +99,7 @@ public class ProcessTestHarness {
     return poll(
         timeout,
         () -> {
-          List<Task> tasks =
+          final List<Task> tasks =
               taskService
                   .createTaskQuery()
                   .processInstanceId(processInstanceId)
@@ -137,9 +137,9 @@ public class ProcessTestHarness {
   }
 
   private <T> T poll(Duration timeout, Supplier<T> attempt, String description) {
-    Instant deadline = Instant.now().plus(timeout);
+    final Instant deadline = Instant.now().plus(timeout);
     while (true) {
-      T result = attempt.get();
+      final T result = attempt.get();
       if (result != null) {
         return result;
       }
@@ -153,7 +153,7 @@ public class ProcessTestHarness {
   private static void sleep(Duration duration) {
     try {
       Thread.sleep(duration.toMillis());
-    } catch (InterruptedException e) {
+    } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted while polling", e);
     }

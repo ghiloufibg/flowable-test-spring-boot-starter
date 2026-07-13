@@ -32,13 +32,14 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
   public ProcessInstanceAssert hasEndedAt(String activityId) {
     isNotNull();
 
-    long active = runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
+    final long active =
+        runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
     if (active != 0) {
       failWithMessage(
           "Expected process instance <%s> to have ended, but it is still active", actual);
     }
 
-    boolean reachedActivity =
+    final boolean reachedActivity =
         !historyService
             .createHistoricActivityInstanceQuery()
             .processInstanceId(actual)
@@ -56,7 +57,8 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
   /** The process instance still has at least one active execution (a genuine wait state). */
   public ProcessInstanceAssert isActive() {
     isNotNull();
-    long active = runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
+    final long active =
+        runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
     if (active == 0) {
       failWithMessage(
           "Expected process instance <%s> to still be active, but it has ended", actual);
@@ -69,7 +71,7 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
     isNotNull();
     // Deliberately routed through TaskService in the harness rather than duplicated here;
     // kept as a HistoryService-only check so this assertion type has no TaskService dependency.
-    long historicTasks =
+    final long historicTasks =
         historyService
             .createHistoricTaskInstanceQuery()
             .processInstanceId(actual)

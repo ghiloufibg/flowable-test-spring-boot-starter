@@ -19,7 +19,7 @@ class EventRegistryChannelScannerTest {
 
   @Test
   void discoversTopicsFromBothOutboundAndInboundChannelShapes_andIgnoresNonKafkaChannels() {
-    Set<String> topics = scanner.discoverKafkaTopics("classpath*:channel-fixtures/*.channel");
+    final Set<String> topics = scanner.discoverKafkaTopics("classpath*:channel-fixtures/*.channel");
 
     assertThat(topics)
         .containsExactlyInAnyOrder("order-events", "payment-callbacks", "payment-callbacks-retry");

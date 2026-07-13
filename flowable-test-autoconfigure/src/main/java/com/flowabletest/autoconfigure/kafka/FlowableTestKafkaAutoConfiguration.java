@@ -32,7 +32,7 @@ public class FlowableTestKafkaAutoConfiguration {
   @ConditionalOnMissingBean
   @ConditionalOnProperty("spring.kafka.bootstrap-servers")
   EmbeddedKafkaBroker embeddedKafkaBroker() {
-    EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.current();
+    final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.current();
     if (broker == null) {
       throw new IllegalStateException(
           "spring.kafka.bootstrap-servers was set but no embedded Kafka broker was started; "

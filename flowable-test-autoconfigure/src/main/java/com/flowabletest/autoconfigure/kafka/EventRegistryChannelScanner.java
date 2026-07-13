@@ -19,7 +19,7 @@ import org.springframework.core.io.support.ResourcePatternResolver;
  * string, inbound channels declare a {@code "topics"} array. Only descriptors with {@code "type":
  * "kafka"} are considered -- other transports (e.g. JMS, RabbitMQ) are ignored.
  */
-public class EventRegistryChannelScanner {
+public final class EventRegistryChannelScanner {
 
   private final ResourcePatternResolver resourcePatternResolver;
   private final ObjectMapper objectMapper = new ObjectMapper();
@@ -29,31 +29,31 @@ public class EventRegistryChannelScanner {
   }
 
   public Set<String> discoverKafkaTopics(String locationPattern) {
-    Set<String> topics = new LinkedHashSet<>();
-    Resource[] resources;
+    final Set<String> topics = new LinkedHashSet<>();
+    final Resource[] resources;
     try {
       resources = resourcePatternResolver.getResources(locationPattern);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new IllegalStateException(
           "Failed to scan for event registry channel descriptors at '" + locationPattern + "'", e);
     }
 
-    for (Resource resource : resources) {
+    for (final Resource resource : resources) {
       if (!resource.isReadable()) {
         continue;
       }
-      try (InputStream in = resource.getInputStream()) {
-        JsonNode root = objectMapper.readTree(in);
+      try (final InputStream in = resource.getInputStream()) {
+        final JsonNode root = objectMapper.readTree(in);
         if (root == null || !"kafka".equalsIgnoreCase(textOrNull(root, "type"))) {
           continue;
         }
 
-        JsonNode topic = root.get("topic");
+        final JsonNode topic = root.get("topic");
         if (topic != null && topic.isTextual()) {
           topics.add(topic.asText());
         }
 
-        JsonNode topicsArray = root.get("topics");
+        final JsonNode topicsArray = root.get("topics");
         if (topicsArray != null && topicsArray.isArray()) {
           topicsArray.forEach(
               node -> {
@@ -62,16 +62,16 @@ public class EventRegistryChannelScanner {
                 }
               });
         }
-      } catch (IOException e) {
+      } catch (final IOException e) {
         throw new IllegalStateException(
             "Failed to read event registry channel descriptor: " + resource, e);
       }
     }
-    return topics;
+    return Set.copyOf(topics);
   }
 
   private static String textOrNull(JsonNode node, String field) {
-    JsonNode value = node.get(field);
+    final JsonNode value = node.get(field);
     return value != null && value.isTextual() ? value.asText() : null;
   }
 }
