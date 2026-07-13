@@ -1,0 +1,54 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: flowable-test-example
+
+  # Standalone-run defaults (H2). Real deployments would point this at a real Postgres instance --
+  # under test, flowable-test-spring-boot-starter overrides the datasource entirely, so none of this
+  # is read in src/test.
+  datasource:
+    url: jdbc:h2:mem:flowable-test-example;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  # All producing/consuming goes through Flowable's Kafka Event Registry (see
+  # src/main/resources/eventregistry/*.channel + *.event and the send-event task / event-registry
+  # start event in order-processing.bpmn20.xml). Its "json" (de)serializerType does its own
+  # JSON <-> text conversion, so the Kafka value (de)serializer here must stay String.
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: flowable-test-example
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+flowable:
+  check-process-definitions: true
+  process-definition-location-prefix: classpath:/processes/
+  process-definition-location-suffixes:
+    - "**.bpmn20.xml"
+  history-level: audit
+  async-executor-activate: true
+
+# Real-deployment placeholder -- irrelevant under test, where the starter's HTTP-mock
+# auto-discovery injects this property before context refresh (see
+# src/test/resources/httpmocks/fraud-check-service).
+fraud-check-service:
+  base-url: http://localhost:8089
+
+logging:
+  level:
+    com.flowabletest.example: DEBUG
+    org.flowable: INFO

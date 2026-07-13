@@ -20,6 +20,15 @@
         <module>flowable-test-core</module>
         <module>flowable-test-autoconfigure</module>
         <module>flowable-test-starter</module>
+
+        <!-- A real Spring Boot + Flowable + Kafka Event Registry consumer app, depending on
+             flowable-test-spring-boot-starter exactly like an external project would. This is a
+             one-way dependency: it validates the starter end to end (real BPMN send-event tasks,
+             a real event-registry-correlated start event, real WireMock-mocked HTTP delegate
+             calls), but nothing in flowable-test-core/-autoconfigure/-starter may ever depend back
+             on it. See its own README for what it proves that the starter's internal test suite
+             alone cannot. -->
+        <module>flowable-test-example</module>
     </modules>
 
     <properties>

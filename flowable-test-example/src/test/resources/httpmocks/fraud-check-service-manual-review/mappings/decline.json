@@ -1,0 +1,11 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPath": "/v1/fraud-check"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": { "approved": false, "score": 0.82 },
+    "headers": { "Content-Type": "application/json" }
+  }
+}

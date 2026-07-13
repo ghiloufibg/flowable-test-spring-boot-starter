@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.flowabletest</groupId>
+        <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>flowable-test-example</artifactId>
+    <name>Flowable Test Starter - Example (Kafka Event Registry)</name>
+    <description>
+        A real Spring Boot + Flowable + Kafka Event Registry order-processing app, depending on
+        flowable-test-spring-boot-starter the same way any external consumer would. Not part of the
+        starter's own release artifacts -- this module exists purely to validate the starter end to
+        end (real BPMN send-event tasks, a real event-registry-correlated start event, real
+        WireMock-mocked HTTP delegate calls, real embedded-postgres/H2 auto-detection) against a
+        genuine domain, closing the gap the starter's own internal test suite cannot: that suite
+        only proves channel-file scanning and raw Kafka bridging in isolation, never a deployed
+        BPMN process driving real Kafka traffic through the engine itself.
+    </description>
+
+    <dependencies>
+        <!-- ==================== Spring Boot Core ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- ==================== Flowable BPMN Engine ====================
+             No explicit version: inherits ${flowable.version} from the parent's dependency
+             management, so running this module with -Dflowable.version=<other> (the same flag
+             CI's version matrix uses) exercises the example app at that version too. -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!-- ==================== Apache Kafka ====================
+             Required at compile/runtime for Flowable's own Kafka Event Registry channel adapter
+             to activate: the BPMN send-event task and the event-registry-correlated start event
+             both go through it. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
+        <!-- ==================== Database ====================
+             H2 so `mvn spring-boot:run` works standalone with zero external services. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ==================== The starter under validation ==================== -->
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-spring-boot-starter</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Opt-in capabilities: declaring these on the test classpath is what lights up the
+             starter's Kafka and HTTP-mocking auto-configuration (see the starter's own README). -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Deliberately included so this module's tests exercise the starter's embedded-postgres
+             auto-detection path (preferred automatically over H2 once present, see
+             FlowableTestDatasourceAutoConfiguration) rather than only ever validating H2. -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+            </plugin>
+
+            <!-- Fresh JVM per test class: the embedded Kafka broker started by
+                 flowable-test-spring-boot-starter is a JVM-wide singleton (at most one per fork,
+                 see EmbeddedFlowableKafkaSupport), so any two test classes here whose
+                 @MockExternalService configuration differs get separate, simultaneously-cached
+                 Spring contexts within the same fork, so both engines would then register as
+                 competing members of the payment-callback Kafka Event Registry channel's consumer
+                 group against that one broker. reuseForks=false gives each class its own broker
+                 instead. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <reuseForks>false</reuseForks>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

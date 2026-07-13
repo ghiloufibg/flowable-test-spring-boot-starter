@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Order processing, trimmed to exercise every capability of flowable-test-spring-boot-starter
+  exactly once rather than demonstrating the full BPMN feature set:
+    - a "send-event" service task publishing to a Kafka Event Registry outbound channel
+    - a JavaDelegate calling an external HTTP service (mocked via WireMock in tests)
+    - an exclusiveGateway + userTask/candidateGroups wait state
+    - an embedded, non-interrupting event-registry-correlated subprocess consuming an inbound
+      Kafka Event Registry channel
+  No BPMNDI: this file is not meant to round-trip through a BPMN modeler, only to execute.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowabletest.com/example"
+             exporter="flowable-test-example"
+             exporterVersion="1.0">
+
+  <process id="orderProcessing" name="Order Processing" isExecutable="true">
+
+    <startEvent id="startEvent" name="Order Received"/>
+    <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="publishOrderCreatedEventTask"/>
+
+    <!-- Kafka Event Registry: outbound send-event task -->
+    <serviceTask id="publishOrderCreatedEventTask"
+                 name="Publish Order Created Event"
+                 flowable:type="send-event">
+      <extensionElements>
+        <flowable:eventType>orderCreatedEvent</flowable:eventType>
+        <flowable:channelKey>orderEventsChannel</flowable:channelKey>
+        <flowable:sendSynchronously>true</flowable:sendSynchronously>
+        <flowable:eventInParameter sourceExpression="${orderId}" target="orderId"/>
+        <flowable:eventInParameter sourceExpression="${customerId}" target="customerId"/>
+        <flowable:eventInParameter sourceExpression="${totalAmount}" target="totalAmount"/>
+      </extensionElements>
+    </serviceTask>
+    <sequenceFlow id="flow2" sourceRef="publishOrderCreatedEventTask" targetRef="fraudCheckTask"/>
+
+    <!-- External HTTP call, mocked via WireMock convention in tests -->
+    <serviceTask id="fraudCheckTask"
+                 name="Fraud Check"
+                 flowable:delegateExpression="${fraudCheckDelegate}">
+      <documentation>
+        Calls the external fraud-check HTTP service. Sets: fraudApproved (Boolean), fraudScore
+        (Double).
+      </documentation>
+    </serviceTask>
+    <sequenceFlow id="flow3" sourceRef="fraudCheckTask" targetRef="fraudGateway"/>
+
+    <exclusiveGateway id="fraudGateway" name="Requires Manual Review?"/>
+
+    <sequenceFlow id="flowAutoApproved" sourceRef="fraudGateway" targetRef="endEventAccepted"
+                  name="Approved">
+      <conditionExpression xsi:type="tFormalExpression">${fraudApproved == true}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flowNeedsReview" sourceRef="fraudGateway" targetRef="managerApprovalTask"
+                  name="Needs Review">
+      <conditionExpression xsi:type="tFormalExpression">${fraudApproved == false}</conditionExpression>
+    </sequenceFlow>
+
+    <userTask id="managerApprovalTask" name="Manager Approval" flowable:candidateGroups="managers">
+      <documentation>
+        The fraud check declined auto-approval. A manager must set "approved" = true/false.
+      </documentation>
+    </userTask>
+    <sequenceFlow id="flow4" sourceRef="managerApprovalTask" targetRef="approvalGateway"/>
+
+    <exclusiveGateway id="approvalGateway" name="Approved?"/>
+
+    <sequenceFlow id="flowApproved" sourceRef="approvalGateway" targetRef="endEventAccepted"
+                  name="Approved">
+      <conditionExpression xsi:type="tFormalExpression">${approved == true}</conditionExpression>
+    </sequenceFlow>
+
+    <sequenceFlow id="flowRejected" sourceRef="approvalGateway" targetRef="endEventRejected"
+                  name="Rejected">
+      <conditionExpression xsi:type="tFormalExpression">${approved == false}</conditionExpression>
+    </sequenceFlow>
+
+    <endEvent id="endEventAccepted" name="Order Accepted"/>
+    <endEvent id="endEventRejected" name="Order Rejected"/>
+
+    <!-- Kafka Event Registry: inbound, correlated, non-interrupting event subprocess.
+         Stays subscribed for as long as the process instance itself is active, which is only
+         guaranteed once execution has parked at managerApprovalTask above. -->
+    <subProcess id="paymentCallbackEventSubProcess" name="Payment Callback Received"
+                triggeredByEvent="true">
+      <startEvent id="paymentCallbackStartEvent" name="Payment Callback Event"
+                  isInterrupting="false">
+        <extensionElements>
+          <flowable:eventType>paymentCallbackEvent</flowable:eventType>
+          <flowable:eventCorrelationParameter name="orderId" value="${orderId}"/>
+          <flowable:eventOutParameter source="status" target="externalPaymentStatus"/>
+          <flowable:eventOutParameter source="confirmationId" target="externalConfirmationId"/>
+        </extensionElements>
+      </startEvent>
+      <sequenceFlow id="callbackFlow1" sourceRef="paymentCallbackStartEvent"
+                    targetRef="applyPaymentCallbackTask"/>
+      <serviceTask id="applyPaymentCallbackTask"
+                   name="Apply Payment Callback"
+                   flowable:delegateExpression="${paymentCallbackDelegate}"/>
+      <sequenceFlow id="callbackFlow2" sourceRef="applyPaymentCallbackTask"
+                    targetRef="callbackProcessedEndEvent"/>
+      <endEvent id="callbackProcessedEndEvent" name="Callback Processed"/>
+    </subProcess>
+
+  </process>
+</definitions>

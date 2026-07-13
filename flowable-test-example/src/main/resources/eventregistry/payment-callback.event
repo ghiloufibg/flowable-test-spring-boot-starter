@@ -1,0 +1,12 @@
+{
+  "key": "paymentCallbackEvent",
+  "name": "Payment Callback Received",
+  "correlationParameters": [
+    { "name": "orderId", "type": "string" }
+  ],
+  "payload": [
+    { "name": "orderId", "type": "string" },
+    { "name": "status", "type": "string" },
+    { "name": "confirmationId", "type": "string" }
+  ]
+}

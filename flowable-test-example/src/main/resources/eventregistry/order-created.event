@@ -1,0 +1,12 @@
+{
+  "key": "orderCreatedEvent",
+  "name": "Order Created",
+  "correlationParameters": [
+    { "name": "orderId", "type": "string" }
+  ],
+  "payload": [
+    { "name": "orderId", "type": "string" },
+    { "name": "customerId", "type": "string" },
+    { "name": "totalAmount", "type": "double" }
+  ]
+}
