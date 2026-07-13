@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.flowabletest</groupId>
+        <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>flowable-test-autoconfigure</artifactId>
+    <name>Flowable Test Starter - Autoconfigure</name>
+    <description>
+        Spring Boot auto-configuration classes, one per capability, each gated behind
+        @ConditionalOnClass so a consumer only activates what's actually on their classpath.
+        Tested here (test scope only) against a real, pinned Flowable engine; design doc
+        section 5.5 explains why that's safe and doesn't leak to consumers.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Flowable API surface: provided, never propagated (design doc section 5.1) -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-engine</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+
+        <!-- Used to parse Flowable's own *.channel Event Registry descriptors when
+             auto-discovering Kafka topics (design doc section 4.2). Not marked optional: it's
+             already a near-universal transitive dependency of any Spring Boot project. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: only used if the consumer has spring-kafka-test on their own classpath. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: only used if the consumer has wiremock on their own classpath. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: only used if the consumer opts into flowable.test.datasource.provider=embedded-postgres. -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- ==================== Internal validation only (test scope, never propagated) ====================
+             A real, pinned Flowable engine so this module's own tests can prove the
+             auto-configuration classes actually work end to end. See design doc section 5.5. -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

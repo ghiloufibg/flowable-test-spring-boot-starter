@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.flowabletest</groupId>
+    <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>Flowable Test Spring Boot Starter (parent)</name>
+    <description>
+        Docker-free Spring Boot test starter for Flowable BPMN projects: embedded DB,
+        embedded Kafka (auto-discovered from Flowable's own Event Registry channel files),
+        declarative HTTP mocking (WireMock, convention over configuration), and a generic
+        BPMN process-testing DSL. See design doc for full rationale.
+    </description>
+
+    <modules>
+        <module>flowable-test-core</module>
+        <module>flowable-test-autoconfigure</module>
+        <module>flowable-test-starter</module>
+    </modules>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+
+        <!-- Reference version the starter compiles/tests against. The compatibility guard
+             (FlowableCompatibilityGuardAutoConfiguration) checks the CONSUMER's actual runtime
+             ProcessEngine.VERSION against a supported range at test startup; it does not pin
+             consumers to this exact version. See flowable.supported.min/maxExclusive below. -->
+        <flowable.version>7.1.0</flowable.version>
+        <flowable.supported.min>7.0.0</flowable.supported.min>
+        <flowable.supported.maxExclusive>8.0.0</flowable.supported.maxExclusive>
+
+        <spring-boot.version>3.3.5</spring-boot.version>
+        <wiremock.version>3.9.1</wiremock.version>
+        <embedded-postgres.version>2.0.7</embedded-postgres.version>
+        <assertj.version>3.26.3</assertj.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Flowable: PROVIDED everywhere it's used (see design doc section 5).
+                 The starter compiles against this version's API surface but never declares
+                 it as a compile/runtime dependency that would propagate to consumers; the
+                 consumer's own flowable-spring-boot-starter is always the sole source of the
+                 engine, at whatever 7.x version they've chosen. -->
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-engine</artifactId>
+                <version>${flowable.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-spring-boot-starter</artifactId>
+                <version>${flowable.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock-standalone</artifactId>
+                <version>${wiremock.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.zonky.test</groupId>
+                <artifactId>embedded-postgres</artifactId>
+                <version>${embedded-postgres.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.2.5</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.flowabletest</groupId>
+        <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>flowable-test-spring-boot-starter</artifactId>
+    <name>Flowable Test Spring Boot Starter</name>
+    <description>
+        The artifact consumers actually depend on (test scope). Pure aggregator: pulls in
+        flowable-test-core + flowable-test-autoconfigure and nothing else. Kafka/HTTP-mocking
+        support stay opt-in; add org.springframework.kafka:spring-kafka-test and/or
+        org.wiremock:wiremock-standalone yourself to light up those capabilities; this starter
+        never forces either on a project that doesn't use them. See the README for the full
+        dependency list to add depending on which capabilities you want.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-autoconfigure</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+</project>

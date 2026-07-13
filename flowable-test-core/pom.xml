@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.flowabletest</groupId>
+        <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>flowable-test-core</artifactId>
+    <name>Flowable Test Starter - Core</name>
+    <description>
+        Annotations, DSL, and process-testing harness. No Spring Boot auto-configuration here;
+        that lives in flowable-test-autoconfigure. Kafka/WireMock types are optional compile
+        dependencies: the classes that use them (KafkaTestBridge, HttpStubConfigurer) are only
+        ever loaded if the autoconfigure module actually activates that capability, so a consumer
+        who never adds spring-kafka-test/wiremock never needs those classes resolvable.
+    </description>
+
+    <dependencies>
+        <!-- Flowable API surface: provided, never propagated to consumers (design doc section 5.1) -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-engine</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Needed to compile @FlowableProcessTest as a composed annotation over @SpringBootTest -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+        </dependency>
+
+        <!-- Optional: only needed by KafkaTestBridge. Not propagated to consumers (design doc
+             section 3/4.2); a consumer must add spring-kafka-test themselves to use this. -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Optional: only needed by HttpStubConfigurer. Not propagated to consumers. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,10 @@
+{
+  "key": "orderEventsChannel",
+  "category": "channel",
+  "name": "Order Events Outbound Channel",
+  "channelType": "outbound",
+  "type": "kafka",
+  "topic": "order-events",
+  "recordKey": { "eventField": "orderId" },
+  "serializerType": "json"
+}

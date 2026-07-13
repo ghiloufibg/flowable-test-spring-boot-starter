@@ -1,0 +1,5 @@
+com.flowabletest.autoconfigure.guard.FlowableCompatibilityGuardAutoConfiguration
+com.flowabletest.autoconfigure.assertions.FlowableTestAssertionsAutoConfiguration
+com.flowabletest.autoconfigure.datasource.FlowableTestDatasourceAutoConfiguration
+com.flowabletest.autoconfigure.kafka.FlowableTestKafkaAutoConfiguration
+com.flowabletest.autoconfigure.http.FlowableTestHttpStubAutoConfiguration
