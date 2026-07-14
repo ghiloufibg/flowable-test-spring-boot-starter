@@ -51,6 +51,7 @@
 
         <spotless.version>2.44.5</spotless.version>
         <google-java-format.version>1.27.0</google-java-format.version>
+        <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -124,6 +125,27 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
+                </plugin>
+                <!-- Not bound to any lifecycle phase: generating Javadoc on every `mvn install`
+                     would slow down the inner dev loop for no benefit. Run `mvn javadoc:javadoc`
+                     (per module) or `mvn javadoc:aggregate` (whole reactor) directly; CI runs it as
+                     its own job (see .github/workflows/ci.yml) so a broken {@code @link} or
+                     malformed HTML is still caught on every push. `-Xdoclint:all,-missing` catches
+                     exactly that class of error without demanding `@param`/`@return` tags this
+                     codebase deliberately omits in favor of prose (see CLAUDE.md's Javadoc rule);
+                     `-Xwerror` is what actually turns those doclint findings into a build failure,
+                     since without it doclint only prints warnings. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>${maven-javadoc-plugin.version}</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <doclint>all,-missing</doclint>
+                        <additionalOptions>
+                            <additionalOption>-Xwerror</additionalOption>
+                        </additionalOptions>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
