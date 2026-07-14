@@ -131,10 +131,24 @@
                         <release>${maven.compiler.release}</release>
                     </configuration>
                 </plugin>
+                <!-- systemPropertyVariables: kafka-clients/kafka-server-common's test-jars each
+                     accidentally bundle their own junit-platform.properties (KAFKA-17121, fixed
+                     upstream in 3.9.0; this project is pinned to 3.7.1), so JUnit Platform logs an
+                     AVERTISSEMENT/WARNING on every test JVM start about discovering more than one on
+                     the classpath. Harmless, since this project defines no junit-platform.properties
+                     of its own for the ambiguity to affect, so silenced via java.util.logging rather
+                     than chased upstream; see the referenced file's own comment for the full
+                     rationale. maven.multiModuleProjectDirectory always resolves to the reactor root
+                     regardless of which module a test JVM forks from. -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.2.5</version>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <java.util.logging.config.file>${maven.multiModuleProjectDirectory}/.mvn/junit-platform-launcher-logging.properties</java.util.logging.config.file>
+                        </systemPropertyVariables>
+                    </configuration>
                 </plugin>
                 <!-- Not bound to any lifecycle phase: generating Javadoc on every `mvn install`
                      would slow down the inner dev loop for no benefit. Run `mvn javadoc:javadoc`

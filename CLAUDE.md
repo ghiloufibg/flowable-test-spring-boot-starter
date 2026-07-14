@@ -281,3 +281,27 @@ project's public API documentation.
   and `design:` — none of these strings may appear in a `.java` file's `/** ... */` comments.
 - This rule applies only to Javadoc/code comments. Prose files under `claudedocs/` themselves, and
   this `CLAUDE.md`, may still reference each other freely — they are removed together.
+
+### 7. COMMENT DISCIPLINE — HELPFUL IN CODE, NEAR-ZERO IN BUILD/CONFIG FILES
+
+Comments are welcome where they genuinely help a reader — explaining non-obvious logic in Java
+code, Javadoc on public API surface, or anything the user explicitly asks for. This rule does not
+ban comments; it bans *low-value* ones, and draws the line differently depending on file type:
+
+**Java code / Javadoc** — normal judgment applies: comment when the *why* is genuinely non-obvious
+(a hidden constraint, a workaround for a specific bug, a subtle invariant) or when explaining
+behavior on public API surface. Don't comment what well-named code already says.
+
+**Build/config files — `pom.xml`, everything under `.mvn/`, YAML, properties files, shell scripts,
+CI workflow files, and similar** — default to zero comments unless the user explicitly asks for
+one. These files accumulate low-value comment bloat easily (every version pin or plugin tweak
+"has a reason," but that's not sufficient justification). Only add a comment here when omitting it
+would let a future edit silently reintroduce a bug or reopen a settled question — and even then,
+keep it to one line, not a paragraph.
+
+**Prohibited pattern:** multi-sentence comment blocks in `pom.xml`/`.mvn` files narrating design
+history, cross-referencing "design doc section X.Y", or explaining ordinary version pins.
+
+**Enforcement:** Before adding a comment in a build/config file, ask "did the user ask for this, or
+would omitting it actually risk a silent regression?" If neither, don't write it. In Java code,
+apply the existing non-obvious-why bar instead.
