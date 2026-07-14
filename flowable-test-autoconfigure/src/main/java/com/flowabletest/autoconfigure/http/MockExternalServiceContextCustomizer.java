@@ -5,7 +5,6 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.test.context.ContextCustomizer;
@@ -48,10 +47,7 @@ record MockExternalServiceContextCustomizer(Set<MockExternalService> overrides)
       overriddenLocations.put(override.name(), location);
     }
     properties.put(
-        "flowable.test.http-mocks.overridden",
-        overriddenLocations.entrySet().stream()
-            .map(entry -> entry.getKey() + "=" + entry.getValue())
-            .collect(Collectors.joining(",")));
+        "flowable.test.http-mocks.overridden", HttpMockServiceRegistry.encode(overriddenLocations));
     context
         .getEnvironment()
         .getPropertySources()

@@ -26,7 +26,7 @@ public class FlowableCompatibilityGuardAutoConfiguration {
   // Design doc section 5.4: 7.x only. Track this alongside the starter's own release line.
   private static final String SUPPORTED_MIN_INCLUSIVE = "7.0.0";
   private static final String SUPPORTED_MAX_EXCLUSIVE = "8.0.0";
-  private static final String STARTER_VERSION = "0.1.0-SNAPSHOT";
+  private static final String STARTER_VERSION = resolveStarterVersion();
 
   @Bean
   InitializingBean flowableCompatibilityGuard(ProcessEngine processEngine) {
@@ -44,5 +44,18 @@ public class FlowableCompatibilityGuardAutoConfiguration {
                     STARTER_VERSION, SUPPORTED_MIN_INCLUSIVE, SUPPORTED_MAX_EXCLUSIVE, detected));
       }
     };
+  }
+
+  /**
+   * Reads the starter's own version from the jar manifest's {@code Implementation-Version}
+   * (populated by Maven from {@code project.version} at package time), rather than duplicating it
+   * as a literal that would silently drift from the POM on every release. Falls back to a
+   * descriptive placeholder when run from unpackaged classes (e.g. inside this module's own test
+   * suite, which runs against {@code target/classes}, not the built jar, and so has no manifest).
+   */
+  private static String resolveStarterVersion() {
+    final String version =
+        FlowableCompatibilityGuardAutoConfiguration.class.getPackage().getImplementationVersion();
+    return version != null ? version : "development (unpackaged build)";
   }
 }

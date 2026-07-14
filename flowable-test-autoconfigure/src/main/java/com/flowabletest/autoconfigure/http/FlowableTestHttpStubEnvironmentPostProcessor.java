@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -81,11 +80,7 @@ public final class FlowableTestHttpStubEnvironmentPostProcessor
       final WireMockServer server = EmbeddedFlowableHttpMockSupport.ensureStarted(name, location);
       properties.put(name + ".base-url", "http://localhost:" + server.port());
     }
-    properties.put(
-        "flowable.test.http-mocks.discovered",
-        services.entrySet().stream()
-            .map(e -> e.getKey() + "=" + e.getValue())
-            .collect(Collectors.joining(",")));
+    properties.put("flowable.test.http-mocks.discovered", HttpMockServiceRegistry.encode(services));
 
     environment
         .getPropertySources()
