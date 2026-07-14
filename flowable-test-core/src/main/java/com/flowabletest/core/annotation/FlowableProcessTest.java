@@ -40,4 +40,21 @@ public @interface FlowableProcessTest {
 
   @AliasFor(annotation = SpringBootTest.class, attribute = "webEnvironment")
   SpringBootTest.WebEnvironment webEnvironment() default SpringBootTest.WebEnvironment.MOCK;
+
+  /**
+   * {@link FlowableTestIsolation#SHARED} (the default) participates in Spring's ordinary
+   * context-caching exactly as before this attribute existed. {@link
+   * FlowableTestIsolation#SEPARATE_CONTEXT} guarantees this class never shares its {@code
+   * ApplicationContext} -- and therefore its {@code ProcessEngine} and database -- with any other
+   * test class.
+   */
+  FlowableTestIsolation isolation() default FlowableTestIsolation.SHARED;
+
+  /**
+   * Additional BPMN processes to deploy for this class specifically, on top of whatever {@code
+   * flowable.test.processes.deploy} already deploys by default. Each name resolves to {@code
+   * <flowable.test.processes.root>/<name>.bpmn20.xml} -- the same one-file-per-process convention
+   * used everywhere else in this starter.
+   */
+  String[] processes() default {};
 }

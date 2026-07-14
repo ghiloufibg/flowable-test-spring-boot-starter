@@ -5,6 +5,7 @@ import com.flowabletest.core.harness.ProcessTestHarness;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -13,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
 
 /**
  * Registers {@link ProcessTestHarness} around the consumer's own Flowable engine beans. Always
@@ -42,12 +44,16 @@ public class FlowableTestAssertionsAutoConfiguration {
       TaskService taskService,
       HistoryService historyService,
       ManagementService managementService,
+      RepositoryService repositoryService,
+      Environment environment,
       ObjectProvider<ProcessDiagnosticsCollector> diagnosticsCollector) {
     return new ProcessTestHarness(
         runtimeService,
         taskService,
         historyService,
         managementService,
+        repositoryService,
+        environment.getProperty("flowable.test.processes.root", "classpath:processes"),
         diagnosticsCollector.getIfAvailable());
   }
 }

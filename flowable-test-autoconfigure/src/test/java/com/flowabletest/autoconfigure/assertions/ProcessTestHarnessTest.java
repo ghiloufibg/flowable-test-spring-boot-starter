@@ -67,6 +67,33 @@ class ProcessTestHarnessTest {
     harness.assertThat(instance.getId()).hasEndedAt("endEvent");
   }
 
+  /**
+   * {@code harness-only.bpmn20.xml} lives under {@code processes-harness-only/}, a root never
+   * scanned by Flowable's own default {@code classpath*:/processes/} location and never deployed by
+   * any other mechanism -- so starting its process instance below only succeeds if {@link
+   * ProcessTestHarness#deployProcess} itself did the deployment. Uses its own harness instance
+   * constructed with that alternate {@code processesRoot}, mirroring how {@link
+   * #aDiagnosticsCollectionFailureDoesNotMaskTheOriginalHarnessFailure} already constructs a
+   * harness directly rather than through the Spring-wired bean.
+   */
+  @Test
+  void deployProcessDeploysABpmnFileFromTheConfiguredProcessesRoot() {
+    final ProcessTestHarness rootScopedHarness =
+        new ProcessTestHarness(
+            runtimeService,
+            taskService,
+            historyService,
+            managementService,
+            repositoryService,
+            "classpath:processes-harness-only",
+            null);
+
+    rootScopedHarness.deployProcess("harness-only");
+
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("harnessOnlyProcess");
+    assertThat(instance).isNotNull();
+  }
+
   @Test
   void awaitTaskForCandidateGroupPollsUntilTheTaskAppears() {
     final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
@@ -114,7 +141,13 @@ class ProcessTestHarnessTest {
             null, taskService, historyService, managementService, 20, 500, true, List.of());
     final ProcessTestHarness brokenHarness =
         new ProcessTestHarness(
-            runtimeService, taskService, historyService, managementService, brokenCollector);
+            runtimeService,
+            taskService,
+            historyService,
+            managementService,
+            repositoryService,
+            "classpath:processes",
+            brokenCollector);
 
     assertThatThrownBy(() -> brokenHarness.findSingleTask(instance.getId(), "no-such-group"))
         .isInstanceOf(IllegalStateException.class)

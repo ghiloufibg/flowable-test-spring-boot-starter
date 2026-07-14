@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             targetNamespace="http://flowabletest.com/processes-harness-only">
+
+    <process id="harnessOnlyProcess" name="Harness Only Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="endEvent" />
+        <endEvent id="endEvent" />
+    </process>
+</definitions>

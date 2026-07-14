@@ -14,6 +14,7 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
@@ -59,6 +60,8 @@ public final class ProcessTestHarness {
   private final TaskService taskService;
   private final HistoryService historyService;
   private final ManagementService managementService;
+  private final RepositoryService repositoryService;
+  private final String processesRoot;
   private final ProcessDiagnosticsCollector diagnosticsCollector;
   private final Object activitySignal = new Object();
 
@@ -79,11 +82,15 @@ public final class ProcessTestHarness {
       TaskService taskService,
       HistoryService historyService,
       ManagementService managementService,
+      RepositoryService repositoryService,
+      String processesRoot,
       ProcessDiagnosticsCollector diagnosticsCollector) {
     this.runtimeService = runtimeService;
     this.taskService = taskService;
     this.historyService = historyService;
     this.managementService = managementService;
+    this.repositoryService = repositoryService;
+    this.processesRoot = processesRoot;
     this.diagnosticsCollector = diagnosticsCollector;
     runtimeService.addEventListener(new ActivitySignalListener(), WAIT_RELEVANT_EVENT_TYPES);
   }
@@ -127,6 +134,40 @@ public final class ProcessTestHarness {
     final Task task = findSingleTask(processInstanceId, candidateGroup);
     taskService.complete(task.getId(), variables);
     return task;
+  }
+
+  /**
+   * Deploys {@code <processesRoot>/<processName>.bpmn20.xml} as its own single-resource deployment
+   * -- the programmatic escape hatch (layer 3 of the process-deployment allow-list) for a process
+   * only one test in the whole suite needs, not worth declaring via {@code
+   * flowable.test.processes.deploy} or {@code @FlowableProcessTest(processes = ...)}. {@code
+   * enableDuplicateFiltering()} keeps a repeated call for the same process idempotent -- no new
+   * process-definition version is created if the BPMN content hasn't changed.
+   */
+  public void deployProcess(String processName) {
+    repositoryService
+        .createDeployment()
+        .name(processName)
+        .addClasspathResource(
+            stripClasspathPrefix(processesRoot) + "/" + processName + ".bpmn20.xml")
+        .enableDuplicateFiltering()
+        .deploy();
+  }
+
+  private static String stripClasspathPrefix(String root) {
+    String stripped = root;
+    if (stripped.startsWith("classpath*:")) {
+      stripped = stripped.substring("classpath*:".length());
+    } else if (stripped.startsWith("classpath:")) {
+      stripped = stripped.substring("classpath:".length());
+    }
+    while (stripped.startsWith("/")) {
+      stripped = stripped.substring(1);
+    }
+    while (stripped.endsWith("/")) {
+      stripped = stripped.substring(0, stripped.length() - 1);
+    }
+    return stripped;
   }
 
   public boolean hasEnded(String processInstanceId) {
