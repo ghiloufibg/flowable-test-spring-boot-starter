@@ -1,16 +1,19 @@
 package com.flowabletest.core.diagnostics;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityTrailEntry;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.FailedJobInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.PendingTaskInfo;
 import java.time.Instant;
+import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -35,6 +38,14 @@ import org.flowable.variable.api.history.HistoricVariableInstance;
  * (Surefire reports, log aggregation), so any variable whose name contains one of {@code
  * redactedVariableNamePatterns} (case-insensitive substring match) is rendered as {@code
  * [REDACTED]} instead of its real value, before truncation.
+ *
+ * <p>Object-type variables (a POJO, record, {@code List}, or {@code Map} -- anything Flowable
+ * itself doesn't treat as a primitive) render as JSON rather than {@code Object#toString()}, since
+ * an undocumented value class's default {@code toString()} is just a hash code, telling a reader
+ * nothing about what the variable actually held when the test failed. Falls back to {@code
+ * toString()} if Jackson itself can't serialize the value (a lazy-loading proxy, a getter that
+ * throws), since a diagnostics-rendering failure must never be allowed to replace the real test
+ * failure it was trying to enrich.
  */
 public final class ProcessDiagnosticsCollector {
 
@@ -46,6 +57,8 @@ public final class ProcessDiagnosticsCollector {
   private static final String SEQUENCE_FLOW_ACTIVITY_TYPE = "sequenceFlow";
 
   private static final String REDACTED_PLACEHOLDER = "[REDACTED]";
+
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final RuntimeService runtimeService;
   private final TaskService taskService;
@@ -164,7 +177,7 @@ public final class ProcessDiagnosticsCollector {
     if (value instanceof byte[] bytes) {
       return "byte[" + bytes.length + "]";
     }
-    final String text = String.valueOf(value);
+    final String text = isSimpleType(value) ? String.valueOf(value) : renderAsJson(value);
     if (text.length() <= maxVariableValueLength) {
       return text;
     }
@@ -172,6 +185,30 @@ public final class ProcessDiagnosticsCollector {
         + "... (truncated, "
         + text.length()
         + " chars total)";
+  }
+
+  /**
+   * Types Flowable itself treats as primitives, and that already have a meaningful {@code
+   * toString()} -- JSON-encoding a {@code String} would just add a distracting pair of quotes
+   * around the overwhelming majority of process variables for no benefit.
+   */
+  private static boolean isSimpleType(Object value) {
+    return value instanceof CharSequence
+        || value instanceof Number
+        || value instanceof Boolean
+        || value instanceof Character
+        || value instanceof Enum<?>
+        || value instanceof Date
+        || value instanceof TemporalAccessor
+        || value instanceof UUID;
+  }
+
+  private static String renderAsJson(Object value) {
+    try {
+      return OBJECT_MAPPER.writeValueAsString(value);
+    } catch (final Exception jsonSerializationFailure) {
+      return String.valueOf(value);
+    }
   }
 
   private boolean isRedacted(String variableName) {

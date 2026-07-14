@@ -7,6 +7,7 @@ import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport;
 import com.flowabletest.core.harness.ProcessTestHarness;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import org.flowable.engine.HistoryService;
@@ -168,5 +169,57 @@ class ProcessDiagnosticsCollectorTest {
         .hasSize(1)
         .first()
         .satisfies(job -> assertThat(job.elementId()).isEqualTo("riskyTask"));
+  }
+
+  @Test
+  void rendersObjectTypeVariablesAsJsonInsteadOfAToStringHashCode() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagnosticsProcess", Map.of("order", new OrderSnapshot("CUST-1", 3)));
+
+    final ProcessDiagnosticsReport report = collector.collect(instance.getId());
+
+    assertThat(report.variables().get("order"))
+        .contains("\"customerId\":\"CUST-1\"")
+        .contains("\"itemCount\":3");
+  }
+
+  @Test
+  void rendersListAndMapVariablesAsJson() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagnosticsProcess",
+            Map.of("tags", List.of("urgent", "vip"), "metadata", Map.of("region", "EU")));
+
+    final ProcessDiagnosticsReport report = collector.collect(instance.getId());
+
+    assertThat(report.variables().get("tags")).isEqualTo("[\"urgent\",\"vip\"]");
+    assertThat(report.variables().get("metadata")).isEqualTo("{\"region\":\"EU\"}");
+  }
+
+  @Test
+  void fallsBackToToStringWhenJacksonCannotSerializeTheValue() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagnosticsProcess", Map.of("broken", new PoisonedGetterVariable()));
+
+    final ProcessDiagnosticsReport report = collector.collect(instance.getId());
+
+    assertThat(report.variables().get("broken"))
+        .isEqualTo("PoisonedGetterVariable[fallback-toString]");
+  }
+
+  private record OrderSnapshot(String customerId, int itemCount) implements Serializable {}
+
+  private static final class PoisonedGetterVariable implements Serializable {
+
+    public String getValue() {
+      throw new IllegalStateException("Jackson must not see this");
+    }
+
+    @Override
+    public String toString() {
+      return "PoisonedGetterVariable[fallback-toString]";
+    }
   }
 }

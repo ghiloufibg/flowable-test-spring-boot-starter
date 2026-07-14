@@ -64,6 +64,18 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Jackson: used by ProcessDiagnosticsCollector to render object-type process variables
+             (POJOs, collections, maps) as JSON instead of an unhelpful Object#toString() hash code.
+             provided, not compile: flowable-engine-common already requires jackson-databind at
+             runtime for its own JSON variable type / event registry support, so the consumer always
+             has a binding on their classpath already; this must not become a second,
+             independently-versioned copy. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Optional: only needed by KafkaTestBridge. Not propagated to consumers (design doc
              section 3/4.2); a consumer must add spring-kafka-test themselves to use this. -->
         <dependency>

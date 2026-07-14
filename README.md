@@ -182,6 +182,11 @@ retryable job, rather than failing the test directly). It's attached as a suppre
 the original failure, so it shows up wherever the stack trace already does -- IDE, console,
 Surefire reports -- with no reporting plugin to configure.
 
+Object-type variables (a POJO, record, `List`, or `Map`) render as JSON rather than
+`Object#toString()`, since an undocumented value class's default `toString()` is just a hash code --
+falling back to `toString()` if Jackson itself can't serialize the value, so a diagnostics-rendering
+failure can never replace the real test failure.
+
 On by default; disable it, or tune its limits, via:
 
 ```yaml
