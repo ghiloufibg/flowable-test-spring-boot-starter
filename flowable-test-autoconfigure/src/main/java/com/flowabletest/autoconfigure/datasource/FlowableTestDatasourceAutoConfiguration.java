@@ -10,6 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
+import org.springframework.context.annotation.Configuration;
 
 /**
  * Embedded DB, Docker-free.
@@ -48,36 +49,53 @@ import org.springframework.context.annotation.Conditional;
 @ConditionalOnClass(name = "org.flowable.engine.RuntimeService")
 public class FlowableTestDatasourceAutoConfiguration {
 
-  @Bean(destroyMethod = "close")
+  /**
+   * The {@code EmbeddedPostgres}-typed {@code @Bean} methods live in this nested class, not
+   * directly on {@link FlowableTestDatasourceAutoConfiguration}, so that a consumer without {@code
+   * io.zonky.test:embedded-postgres} on their classpath never fails to start.
+   * {@code @ConditionalOnClass} is normally evaluated from bytecode metadata alone and never needs
+   * to load the gated class -- but {@code AutowiredAnnotationBeanPostProcessor} calls the JVM's own
+   * {@code Class#getDeclaredMethods()} against every configuration class to look for
+   * {@code @Lookup} methods, and that raw reflection call must resolve every declared method's
+   * parameter/return types up front, {@code @Conditional} or not. A method returning {@code
+   * EmbeddedPostgres} directly on the outer class would throw {@code NoClassDefFoundError} from
+   * that scan alone, before Spring ever gets to evaluate the condition. Nesting it sidesteps this:
+   * a nested class gated by its own {@code @ConditionalOnClass} is skipped by {@code
+   * ConfigurationClassParser} using ASM metadata before it is ever loaded, so its methods are never
+   * reflectively enumerated either.
+   */
+  @Configuration(proxyBeanMethods = false)
   @ConditionalOnClass(EmbeddedPostgres.class)
-  @Conditional({
-    EmbeddedPostgresPreferredCondition.class,
-    EmbeddedPostgresInstanceScopeCondition.PerContext.class
-  })
-  EmbeddedPostgres embeddedPostgres() throws IOException {
-    return EmbeddedPostgres.builder().start();
-  }
+  static class EmbeddedPostgresDataSourceConfiguration {
 
-  @Bean
-  @ConditionalOnClass(EmbeddedPostgres.class)
-  @Conditional({
-    EmbeddedPostgresPreferredCondition.class,
-    EmbeddedPostgresInstanceScopeCondition.PerContext.class
-  })
-  @ConditionalOnMissingBean(DataSource.class)
-  DataSource embeddedPostgresDataSource(EmbeddedPostgres embeddedPostgres) {
-    return embeddedPostgres.getPostgresDatabase();
-  }
+    @Bean(destroyMethod = "close")
+    @Conditional({
+      EmbeddedPostgresPreferredCondition.class,
+      EmbeddedPostgresInstanceScopeCondition.PerContext.class
+    })
+    EmbeddedPostgres embeddedPostgres() throws IOException {
+      return EmbeddedPostgres.builder().start();
+    }
 
-  @Bean(destroyMethod = "")
-  @ConditionalOnClass(EmbeddedPostgres.class)
-  @Conditional({
-    EmbeddedPostgresPreferredCondition.class,
-    EmbeddedPostgresInstanceScopeCondition.Shared.class
-  })
-  @ConditionalOnMissingBean(DataSource.class)
-  DataSource embeddedPostgresSharedDataSource() {
-    final EmbeddedPostgres server = EmbeddedPostgresSupport.sharedServer();
-    return EmbeddedPostgresSupport.freshDatabase(server);
+    @Bean
+    @Conditional({
+      EmbeddedPostgresPreferredCondition.class,
+      EmbeddedPostgresInstanceScopeCondition.PerContext.class
+    })
+    @ConditionalOnMissingBean(DataSource.class)
+    DataSource embeddedPostgresDataSource(EmbeddedPostgres embeddedPostgres) {
+      return embeddedPostgres.getPostgresDatabase();
+    }
+
+    @Bean(destroyMethod = "")
+    @Conditional({
+      EmbeddedPostgresPreferredCondition.class,
+      EmbeddedPostgresInstanceScopeCondition.Shared.class
+    })
+    @ConditionalOnMissingBean(DataSource.class)
+    DataSource embeddedPostgresSharedDataSource() {
+      final EmbeddedPostgres server = EmbeddedPostgresSupport.sharedServer();
+      return EmbeddedPostgresSupport.freshDatabase(server);
+    }
   }
 }
