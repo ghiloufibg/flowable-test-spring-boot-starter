@@ -14,11 +14,10 @@ import org.springframework.test.context.TestContextManager;
 
 /**
  * Proves {@link FlowableKafkaConsumerLifecycleTestExecutionListener}'s {@code shared}-mode start/
- * stop choreography: the inbound {@code
- * paymentCallbackChannel} consumer container is running after {@code beforeTestClass}, stopped
- * after {@code afterTestClass}, and idempotently restarted by a subsequent {@code beforeTestClass}
- * -- exactly the sequence Spring's {@code TestContextCache} produces across two real test classes
- * sharing one cached context.
+ * stop choreography: the inbound {@code paymentCallbackChannel} consumer container is running after
+ * {@code beforeTestClass}, stopped after {@code afterTestClass}, and idempotently restarted by a
+ * subsequent {@code beforeTestClass} -- exactly the sequence Spring's {@code TestContextCache}
+ * produces across two real test classes sharing one cached context.
  *
  * <p>Drives {@link TestContextManager} directly (Spring Test's own API for this) against a fixture
  * class below, rather than relying on real multi-class JUnit execution order, which Surefire/JUnit

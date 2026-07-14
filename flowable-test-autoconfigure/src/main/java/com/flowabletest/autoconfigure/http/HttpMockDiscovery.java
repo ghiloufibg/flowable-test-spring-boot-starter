@@ -11,10 +11,10 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 
 /**
  * Scans {@code classpath*:<root>/*<name>/mappings/**} for immediate subdirectories of the HTTP
- * mocks root and treats each as a declared external service -- the
- * convention-over-configuration default. Pattern-matching the resource URL (rather than trying to
- * "list a directory") is what makes this work identically whether resources are read from {@code
- * target/test-classes} on disk or packaged inside a jar.
+ * mocks root and treats each as a declared external service -- the convention-over-configuration
+ * default. Pattern-matching the resource URL (rather than trying to "list a directory") is what
+ * makes this work identically whether resources are read from {@code target/test-classes} on disk
+ * or packaged inside a jar.
  */
 public final class HttpMockDiscovery {
 

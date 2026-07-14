@@ -13,12 +13,12 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
  * Unit-level proof of {@code instance-scope=shared} mode: one native process is started at most
- * once per JVM, and each Spring context still
- * gets its own isolated logical database on top of it. Uses {@link ApplicationContextRunner}
- * directly against the autoconfiguration class (rather than a full {@code @FlowableProcessTest}) so
- * a single test method can deterministically open two independent contexts back to back and inspect
- * {@link EmbeddedPostgresSupport}'s package-private start-count accessor -- something a real,
- * Spring-TestContext-cached {@code ApplicationContext} doesn't let a test control directly.
+ * once per JVM, and each Spring context still gets its own isolated logical database on top of it.
+ * Uses {@link ApplicationContextRunner} directly against the autoconfiguration class (rather than a
+ * full {@code @FlowableProcessTest}) so a single test method can deterministically open two
+ * independent contexts back to back and inspect {@link EmbeddedPostgresSupport}'s package-private
+ * start-count accessor -- something a real, Spring-TestContext-cached {@code ApplicationContext}
+ * doesn't let a test control directly.
  */
 class EmbeddedPostgresInstanceScopeTest {
 

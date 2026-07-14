@@ -38,10 +38,10 @@ import org.springframework.context.annotation.Conditional;
  * configured).
  *
  * <p>{@code flowable.test.datasource.embedded-postgres.instance-scope} additionally controls *how*
- * the embedded-postgres provider allocates its server process: {@code per-context} (the default) forks
- * a fresh native process for every Spring context, exactly as below; {@code shared} starts at most
- * one process per JVM via {@link EmbeddedPostgresSupport} and provisions a fresh logical database
- * per context on top of it. See {@link EmbeddedPostgresInstanceScopeCondition}.
+ * the embedded-postgres provider allocates its server process: {@code per-context} (the default)
+ * forks a fresh native process for every Spring context, exactly as below; {@code shared} starts at
+ * most one process per JVM via {@link EmbeddedPostgresSupport} and provisions a fresh logical
+ * database per context on top of it. See {@link EmbeddedPostgresInstanceScopeCondition}.
  */
 @AutoConfiguration
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)

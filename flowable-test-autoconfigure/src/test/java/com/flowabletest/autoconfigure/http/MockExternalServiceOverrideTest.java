@@ -16,9 +16,9 @@ import org.springframework.core.env.Environment;
 
 /**
  * Proves {@link MockExternalService} redirects a specific test class to an alternate stub folder,
- * instead of the shared {@code httpmocks/demo-service}
- * default that {@link FlowableTestHttpStubAutoConfigurationTest} uses -- both are "demo-service"
- * but must resolve to different content.
+ * instead of the shared {@code httpmocks/demo-service} default that {@link
+ * FlowableTestHttpStubAutoConfigurationTest} uses -- both are "demo-service" but must resolve to
+ * different content.
  */
 @FlowableProcessTest(classes = SampleFlowableApplication.class)
 @MockExternalService(name = "demo-service", stubs = "classpath:httpmocks-alt/demo-service")

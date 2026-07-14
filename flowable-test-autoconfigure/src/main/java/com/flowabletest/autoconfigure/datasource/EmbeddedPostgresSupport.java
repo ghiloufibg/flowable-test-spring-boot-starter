@@ -10,12 +10,12 @@ import javax.sql.DataSource;
 
 /**
  * Starts (at most once per JVM) the shared embedded Postgres server used by {@code
- * instance-scope=shared} mode, mirroring {@code
- * EmbeddedFlowableKafkaSupport}'s and {@code EmbeddedFlowableHttpMockSupport}'s JVM-wide-singleton
- * pattern. Deliberately split into two responsibilities: {@link #sharedServer()} (lazy,
- * at-most-once native process start) and {@link #freshDatabase(EmbeddedPostgres)} (cheap, called
- * once per Spring context, provisions an isolated logical database on the already-running server
- * via {@code CREATE DATABASE} rather than forking a new process).
+ * instance-scope=shared} mode, mirroring {@code EmbeddedFlowableKafkaSupport}'s and {@code
+ * EmbeddedFlowableHttpMockSupport}'s JVM-wide-singleton pattern. Deliberately split into two
+ * responsibilities: {@link #sharedServer()} (lazy, at-most-once native process start) and {@link
+ * #freshDatabase(EmbeddedPostgres)} (cheap, called once per Spring context, provisions an isolated
+ * logical database on the already-running server via {@code CREATE DATABASE} rather than forking a
+ * new process).
  */
 final class EmbeddedPostgresSupport {
 

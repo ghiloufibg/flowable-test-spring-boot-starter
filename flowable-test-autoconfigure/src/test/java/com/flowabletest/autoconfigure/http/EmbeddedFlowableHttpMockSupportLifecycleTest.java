@@ -8,13 +8,13 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * Unit-level proof that a WireMock server's lifetime is bounded by the Spring contexts that
- * {@code retain} it via {@link
- * FlowableTestHttpStubAutoConfiguration#httpMockServers}, not the whole JVM. Uses {@link
- * ApplicationContextRunner} directly against the autoconfiguration class (rather than a full
- * {@code @FlowableProcessTest}) so each test can drive context open/close precisely and inspect
- * {@link EmbeddedFlowableHttpMockSupport}'s package-private refcount/liveness state -- something a
- * real, Spring-TestContext-cached {@code ApplicationContext} doesn't let a test control directly.
+ * Unit-level proof that a WireMock server's lifetime is bounded by the Spring contexts that {@code
+ * retain} it via {@link FlowableTestHttpStubAutoConfiguration#httpMockServers}, not the whole JVM.
+ * Uses {@link ApplicationContextRunner} directly against the autoconfiguration class (rather than a
+ * full {@code @FlowableProcessTest}) so each test can drive context open/close precisely and
+ * inspect {@link EmbeddedFlowableHttpMockSupport}'s package-private refcount/liveness state --
+ * something a real, Spring-TestContext-cached {@code ApplicationContext} doesn't let a test control
+ * directly.
  *
  * <p>Each test uses a service name unique to itself (though pointed at the already-existing {@code
  * httpmocks/demo-service} / {@code httpmocks-alt/demo-service} mapping folders other tests also

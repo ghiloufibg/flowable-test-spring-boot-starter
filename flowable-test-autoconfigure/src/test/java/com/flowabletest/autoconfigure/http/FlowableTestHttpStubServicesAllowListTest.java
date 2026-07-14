@@ -11,11 +11,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 
 /**
- * Proves {@code flowable.test.http-mocks.services}, driving {@link
- * SpringApplicationBuilder} directly rather than {@code @FlowableProcessTest} or {@code
- * ApplicationContextRunner} -- same rationale as {@code FlowableKafkaBrokerScopePerContextTest}:
- * {@code ApplicationContextRunner} bypasses the {@code EnvironmentPostProcessor} SPI entirely,
- * which is where this property is actually read.
+ * Proves {@code flowable.test.http-mocks.services}, driving {@link SpringApplicationBuilder}
+ * directly rather than {@code @FlowableProcessTest} or {@code ApplicationContextRunner} -- same
+ * rationale as {@code FlowableKafkaBrokerScopePerContextTest}: {@code ApplicationContextRunner}
+ * bypasses the {@code EnvironmentPostProcessor} SPI entirely, which is where this property is
+ * actually read.
  *
  * <p>Uses a dedicated {@code httpmocks-services-test} root (two subfolders, {@code
  * declared-service} and {@code undeclared-service}) instead of the shared default {@code

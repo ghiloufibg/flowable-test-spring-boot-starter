@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Proves the embedded-DB capability end to end. {@code
- * io.zonky.test:embedded-postgres} is on this module's own test classpath (it's an optional main
- * dependency of {@code flowable-test-autoconfigure} itself), so {@code
- * src/test/resources/application.yml} pins the rest of this module's tests to H2 explicitly and
- * each nested class here overrides {@code flowable.test.datasource.provider} to exercise one mode.
+ * Proves the embedded-DB capability end to end. {@code io.zonky.test:embedded-postgres} is on this
+ * module's own test classpath (it's an optional main dependency of {@code
+ * flowable-test-autoconfigure} itself), so {@code src/test/resources/application.yml} pins the rest
+ * of this module's tests to H2 explicitly and each nested class here overrides {@code
+ * flowable.test.datasource.provider} to exercise one mode.
  */
 class FlowableTestDatasourceAutoConfigurationTest {
 

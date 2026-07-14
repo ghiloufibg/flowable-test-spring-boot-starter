@@ -26,9 +26,9 @@ import org.springframework.core.env.Environment;
  * HttpMockServiceRegistry} and {@code retain}s each entry, so a context with a
  * {@code @MockExternalService} override always sees the same (overriding) server its {@code
  * <name>.base-url} property points at -- resolving from {@code discovered} alone, as before, could
- * disagree with an override applied later in the same context. {@code httpMockServersReleaseListener}
- * releases that exact same resolved map when this context closes, so a server's lifetime is bounded
- * by its last referencing context rather than the whole JVM.
+ * disagree with an override applied later in the same context. {@code
+ * httpMockServersReleaseListener} releases that exact same resolved map when this context closes,
+ * so a server's lifetime is bounded by its last referencing context rather than the whole JVM.
  */
 @AutoConfiguration
 @ConditionalOnClass(value = WireMockServer.class, name = "org.flowable.engine.RuntimeService")

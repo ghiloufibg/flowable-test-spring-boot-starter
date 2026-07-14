@@ -28,8 +28,7 @@ import org.springframework.util.ClassUtils;
  *
  * <p>{@code flowable.test.kafka.broker-scope} controls which broker gets started: {@code shared}
  * (the default) reuses the JVM-wide singleton, {@code per-context} starts a brand-new broker for
- * this context alone. See
- * {@link FlowableKafkaBrokerScopeCondition}.
+ * this context alone. See {@link FlowableKafkaBrokerScopeCondition}.
  */
 public final class FlowableTestKafkaEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
