@@ -3,6 +3,7 @@ package com.flowabletest.autoconfigure.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
+import java.lang.reflect.Proxy;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -33,6 +34,27 @@ class FlowableKafkaBrokerScopePerContextTest {
       assertThat(firstBrokers).isNotBlank();
       assertThat(secondBrokers).isNotBlank();
       assertThat(secondBrokers).isNotEqualTo(firstBrokers);
+    }
+  }
+
+  /**
+   * The mirror image of {@code FlowableTestKafkaAutoConfigurationTest}'s shared-scope assertion: a
+   * per-context broker is not shared with any other context and has no JVM shutdown hook of its own
+   * (see {@link FlowableTestKafkaAutoConfiguration#embeddedKafkaBrokerPerContext()}), so it must
+   * <em>not</em> be wrapped by {@link SharedEmbeddedKafkaBrokerGuard} -- Spring's own {@code
+   * destroy()} call when this context closes is this broker's only, and correct, cleanup path.
+   */
+  @Test
+  void perContextBrokerIsNotGuarded() {
+    try (ConfigurableApplicationContext context = startContext()) {
+      final EmbeddedKafkaBroker broker = context.getBean(EmbeddedKafkaBroker.class);
+
+      assertThat(Proxy.isProxyClass(broker.getClass()))
+          .as(
+              "per-context broker must be the real instance, not wrapped by "
+                  + "SharedEmbeddedKafkaBrokerGuard, so Spring's own destroy() call on context close "
+                  + "actually tears it down")
+          .isFalse();
     }
   }
 

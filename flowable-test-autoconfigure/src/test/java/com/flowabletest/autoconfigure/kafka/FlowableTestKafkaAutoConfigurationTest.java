@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.kafka.KafkaTestBridge;
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,5 +48,25 @@ class FlowableTestKafkaAutoConfigurationTest {
             "order-events", value -> value.contains(marker), Duration.ofSeconds(15));
 
     assertThat(received).contains(marker);
+  }
+
+  /**
+   * Default scope is {@code shared}, so this bean must be wrapped by {@link
+   * SharedEmbeddedKafkaBrokerGuard} -- see that class's Javadoc for why an unwrapped shared broker
+   * is unsafe. Also proves the guarantee empirically, not just structurally: calling {@code
+   * destroy()} from this context must not tear down the JVM-wide singleton other test classes in
+   * this same fork still depend on.
+   */
+  @Test
+  void sharedScopeBrokerIsGuardedAndSurvivesADestroyCall() {
+    assertThat(Proxy.isProxyClass(embeddedKafkaBroker.getClass()))
+        .as("shared-scope broker must be wrapped by SharedEmbeddedKafkaBrokerGuard")
+        .isTrue();
+
+    embeddedKafkaBroker.destroy();
+
+    assertThat(embeddedKafkaBroker.getBrokersAsString())
+        .as("destroy() must be a no-op on the shared broker -- it stays usable afterward")
+        .isNotBlank();
   }
 }
