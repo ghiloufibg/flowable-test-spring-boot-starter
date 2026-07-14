@@ -9,7 +9,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.flowable.common.engine.api.delegate.event.AbstractFlowableEventListener;
+import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
+import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
@@ -25,22 +29,48 @@ import org.flowable.task.api.Task;
  */
 public final class ProcessTestHarness {
 
-  private static final Duration DEFAULT_POLL_INTERVAL = Duration.ofMillis(200);
+  /**
+   * Engine event types that can plausibly change the outcome of a pending {@link #poll} call.
+   * Subscribed once, for the harness's whole lifetime, so a wait wakes up the instant the engine
+   * actually does something relevant instead of on a fixed sleep interval. {@code
+   * JOB_MOVED_TO_DEADLETTER} additionally drives the fail-fast check in {@link #poll}.
+   */
+  private static final FlowableEngineEventType[] WAIT_RELEVANT_EVENT_TYPES = {
+    FlowableEngineEventType.TASK_CREATED,
+    FlowableEngineEventType.TASK_COMPLETED,
+    FlowableEngineEventType.ACTIVITY_COMPLETED,
+    FlowableEngineEventType.PROCESS_STARTED,
+    FlowableEngineEventType.PROCESS_COMPLETED,
+    FlowableEngineEventType.PROCESS_COMPLETED_WITH_TERMINATE_END_EVENT,
+    FlowableEngineEventType.PROCESS_COMPLETED_WITH_ERROR_END_EVENT,
+    FlowableEngineEventType.PROCESS_COMPLETED_WITH_ESCALATION_END_EVENT,
+    FlowableEngineEventType.PROCESS_CANCELLED,
+    FlowableEngineEventType.TIMER_FIRED,
+    FlowableEngineEventType.JOB_EXECUTION_SUCCESS,
+    FlowableEngineEventType.JOB_EXECUTION_FAILURE,
+    FlowableEngineEventType.JOB_MOVED_TO_DEADLETTER,
+  };
 
   private final RuntimeService runtimeService;
   private final TaskService taskService;
   private final HistoryService historyService;
+  private final ManagementService managementService;
   private final ProcessDiagnosticsCollector diagnosticsCollector;
+  private final Object activitySignal = new Object();
 
   public ProcessTestHarness(
       RuntimeService runtimeService,
       TaskService taskService,
       HistoryService historyService,
+      ManagementService managementService,
       ProcessDiagnosticsCollector diagnosticsCollector) {
     this.runtimeService = runtimeService;
     this.taskService = taskService;
     this.historyService = historyService;
+    this.managementService = managementService;
     this.diagnosticsCollector = diagnosticsCollector;
+    runtimeService.addEventListener(
+        new ActivitySignalListener(activitySignal), WAIT_RELEVANT_EVENT_TYPES);
   }
 
   public ProcessInstanceAssert assertThat(String processInstanceId) {
@@ -89,7 +119,12 @@ public final class ProcessTestHarness {
         == 0;
   }
 
-  /** Polls until the process instance has ended, or throws once {@code timeout} elapses. */
+  /**
+   * Waits until the process instance has ended, waking up on the engine's own activity/task/job
+   * events rather than sleeping on a fixed interval. Throws once {@code timeout} elapses, or
+   * immediately (well before {@code timeout}) if a dead-letter job appears on the instance -- see
+   * {@link #poll}.
+   */
   public HistoricProcessInstance awaitEnded(String processInstanceId, Duration timeout) {
     return poll(
         timeout,
@@ -105,8 +140,8 @@ public final class ProcessTestHarness {
   }
 
   /**
-   * Polls until a task with the given candidate group appears on the process instance, or throws
-   * once {@code timeout} elapses.
+   * Waits until a task with the given candidate group appears on the process instance. See {@link
+   * #awaitEnded} for the wake-up and fail-fast behavior.
    */
   public Task awaitTaskForCandidateGroup(
       String processInstanceId, String candidateGroup, Duration timeout) {
@@ -130,9 +165,10 @@ public final class ProcessTestHarness {
   }
 
   /**
-   * Polls until a call-activity child process instance of the given definition key appears under
+   * Waits until a call-activity child process instance of the given definition key appears under
    * {@code parentProcessInstanceId} (a call activity's child has its own process instance ID, so it
-   * must be located via {@code superProcessInstanceId}, not the parent's ID).
+   * must be located via {@code superProcessInstanceId}, not the parent's ID). See {@link
+   * #awaitEnded} for the wake-up and fail-fast behavior.
    */
   public HistoricProcessInstance awaitCallActivityChild(
       String parentProcessInstanceId, String childProcessDefinitionKey, Duration timeout) {
@@ -152,6 +188,18 @@ public final class ProcessTestHarness {
         parentProcessInstanceId);
   }
 
+  /**
+   * Polls {@code attempt} until it returns non-null or {@code timeout} elapses. Rather than
+   * sleeping on a fixed interval, each cycle blocks on {@code activitySignal} until the engine's
+   * own {@link ActivitySignalListener} wakes it -- registered once, in the constructor, for the
+   * event types in {@link #WAIT_RELEVANT_EVENT_TYPES} -- so a wait resolves the moment the engine
+   * actually advances (typically on the async job executor thread or a Kafka Event Registry
+   * consumer thread) instead of up to one poll interval late. Also fails fast, before {@code
+   * timeout} elapses, the moment a dead-letter job appears for {@code diagnosticsProcessInstanceId}
+   * -- an async delegate that threw does not fail the awaiting test directly, it gets silently
+   * parked as a dead-letter job, and without this check the wait would otherwise run out its full
+   * timeout for a state that will never arrive.
+   */
   private <T> T poll(
       Duration timeout,
       Supplier<T> attempt,
@@ -163,12 +211,42 @@ public final class ProcessTestHarness {
       if (result != null) {
         return result;
       }
-      if (Instant.now().isAfter(deadline)) {
+      failFastOnDeadLetterJob(diagnosticsProcessInstanceId);
+      final long remainingMillis = Duration.between(Instant.now(), deadline).toMillis();
+      if (remainingMillis <= 0) {
         throw withDiagnostics(
             new AssertionError("Timed out after " + timeout + " waiting for " + description),
             diagnosticsProcessInstanceId);
       }
-      sleep(DEFAULT_POLL_INTERVAL);
+      awaitEngineActivity(remainingMillis);
+    }
+  }
+
+  private void awaitEngineActivity(long remainingMillis) {
+    synchronized (activitySignal) {
+      try {
+        activitySignal.wait(remainingMillis);
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IllegalStateException("Interrupted while awaiting a BPMN engine event", e);
+      }
+    }
+  }
+
+  private void failFastOnDeadLetterJob(String processInstanceId) {
+    final boolean hasDeadLetterJob =
+        !managementService
+            .createDeadLetterJobQuery()
+            .processInstanceId(processInstanceId)
+            .list()
+            .isEmpty();
+    if (hasDeadLetterJob) {
+      throw withDiagnostics(
+          new AssertionError(
+              "Process instance <"
+                  + processInstanceId
+                  + "> has a dead-letter job -- see attached diagnostics for the failure"),
+          processInstanceId);
     }
   }
 
@@ -186,12 +264,32 @@ public final class ProcessTestHarness {
     return failure;
   }
 
-  private static void sleep(Duration duration) {
-    try {
-      Thread.sleep(duration.toMillis());
-    } catch (final InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IllegalStateException("Interrupted while polling", e);
+  /**
+   * Wakes every thread blocked in {@link #awaitEngineActivity} on any relevant engine event.
+   * Deliberately does no work beyond that -- no query, no business logic -- so it stays safe to
+   * invoke synchronously from whichever thread the engine fires the event on (the async job
+   * executor, a Kafka Event Registry consumer thread, or the calling thread itself), and {@link
+   * #isFailOnException()} returns {@code false} so a defect here can never surface as a failure in
+   * the engine event dispatch it rides on.
+   */
+  private static final class ActivitySignalListener extends AbstractFlowableEventListener {
+
+    private final Object signal;
+
+    private ActivitySignalListener(Object signal) {
+      this.signal = signal;
+    }
+
+    @Override
+    public void onEvent(FlowableEvent event) {
+      synchronized (signal) {
+        signal.notifyAll();
+      }
+    }
+
+    @Override
+    public boolean isFailOnException() {
+      return false;
     }
   }
 }

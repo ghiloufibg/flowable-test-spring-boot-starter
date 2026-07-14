@@ -1,15 +1,19 @@
 package com.flowabletest.autoconfigure.assertions;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.harness.ProcessTestHarness;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,19 +30,22 @@ class ProcessTestHarnessTest {
 
   @Autowired RepositoryService repositoryService;
   @Autowired RuntimeService runtimeService;
+  @Autowired ManagementService managementService;
   @Autowired ProcessTestHarness harness;
 
   @BeforeEach
-  void deployHelloProcess() {
+  void deployFixtureProcesses() {
+    deployOnce("helloProcess", "processes/hello.bpmn20.xml");
+    deployOnce("diagnosticsAsyncFailProcess", "processes/diagnostics-async-fail.bpmn20.xml");
+  }
+
+  private void deployOnce(String processDefinitionKey, String classpathResource) {
     if (repositoryService
             .createProcessDefinitionQuery()
-            .processDefinitionKey("helloProcess")
+            .processDefinitionKey(processDefinitionKey)
             .count()
         == 0) {
-      repositoryService
-          .createDeployment()
-          .addClasspathResource("processes/hello.bpmn20.xml")
-          .deploy();
+      repositoryService.createDeployment().addClasspathResource(classpathResource).deploy();
     }
   }
 
@@ -62,5 +69,28 @@ class ProcessTestHarnessTest {
         harness.awaitTaskForCandidateGroup(instance.getId(), "reviewers", Duration.ofSeconds(5));
 
     assertThat(task.getName()).isEqualTo("Review");
+  }
+
+  /**
+   * A dead-letter job never resolves on its own, so without a fail-fast check {@code awaitEnded}
+   * would otherwise have no choice but to wait out its entire timeout for a state that will never
+   * arrive. Uses a generous 30-second timeout specifically so this test can prove the fail-fast
+   * path fires within a small fraction of it, rather than being indistinguishable from a real
+   * timeout.
+   */
+  @Test
+  void awaitEndedFailsFastOnADeadLetterJobInsteadOfWaitingOutTheFullTimeout() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey("diagnosticsAsyncFailProcess");
+    final Job pendingJob =
+        managementService.createJobQuery().processInstanceId(instance.getId()).singleResult();
+    managementService.moveJobToDeadLetterJob(pendingJob.getId());
+
+    final Instant before = Instant.now();
+    assertThatThrownBy(() -> harness.awaitEnded(instance.getId(), Duration.ofSeconds(30)))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("dead-letter job");
+
+    assertThat(Duration.between(before, Instant.now())).isLessThan(Duration.ofSeconds(5));
   }
 }

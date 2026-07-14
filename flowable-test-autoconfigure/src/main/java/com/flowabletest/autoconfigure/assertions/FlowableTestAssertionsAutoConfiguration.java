@@ -3,6 +3,7 @@ package com.flowabletest.autoconfigure.assertions;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.harness.ProcessTestHarness;
 import org.flowable.engine.HistoryService;
+import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -40,8 +41,13 @@ public class FlowableTestAssertionsAutoConfiguration {
       RuntimeService runtimeService,
       TaskService taskService,
       HistoryService historyService,
+      ManagementService managementService,
       ObjectProvider<ProcessDiagnosticsCollector> diagnosticsCollector) {
     return new ProcessTestHarness(
-        runtimeService, taskService, historyService, diagnosticsCollector.getIfAvailable());
+        runtimeService,
+        taskService,
+        historyService,
+        managementService,
+        diagnosticsCollector.getIfAvailable());
   }
 }
