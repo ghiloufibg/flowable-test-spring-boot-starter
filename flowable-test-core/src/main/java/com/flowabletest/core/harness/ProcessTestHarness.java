@@ -62,6 +62,18 @@ public final class ProcessTestHarness {
   private final ProcessDiagnosticsCollector diagnosticsCollector;
   private final Object activitySignal = new Object();
 
+  /**
+   * Incremented under {@code synchronized (activitySignal)} every time {@link
+   * ActivitySignalListener} fires. {@link #poll} captures this value before evaluating {@code
+   * attempt}, then only calls {@link Object#wait(long)} if it's still unchanged -- otherwise an
+   * engine event firing between the {@code attempt} check and the {@code wait()} call would {@code
+   * notifyAll()} before anything is blocked on the monitor yet, and that wake-up would be silently
+   * lost: the classic wait/notify missed-signal race. Without this guard, a lost wake-up means the
+   * waiting thread sleeps out the entire remaining timeout instead of resolving immediately,
+   * silently reintroducing the slow-wait behavior this event-driven design exists to avoid.
+   */
+  private long activityGeneration;
+
   public ProcessTestHarness(
       RuntimeService runtimeService,
       TaskService taskService,
@@ -73,8 +85,7 @@ public final class ProcessTestHarness {
     this.historyService = historyService;
     this.managementService = managementService;
     this.diagnosticsCollector = diagnosticsCollector;
-    runtimeService.addEventListener(
-        new ActivitySignalListener(activitySignal), WAIT_RELEVANT_EVENT_TYPES);
+    runtimeService.addEventListener(new ActivitySignalListener(), WAIT_RELEVANT_EVENT_TYPES);
   }
 
   public ProcessInstanceAssert assertThat(String processInstanceId) {
@@ -211,6 +222,7 @@ public final class ProcessTestHarness {
       String diagnosticsProcessInstanceId) {
     final Instant deadline = Instant.now().plus(timeout);
     while (true) {
+      final long generationBeforeAttempt = currentActivityGeneration();
       final T result = attempt.get();
       if (result != null) {
         return result;
@@ -222,12 +234,27 @@ public final class ProcessTestHarness {
             new AssertionError("Timed out after " + timeout + " waiting for " + description),
             diagnosticsProcessInstanceId);
       }
-      awaitEngineActivity(remainingMillis);
+      awaitEngineActivity(remainingMillis, generationBeforeAttempt);
     }
   }
 
-  private void awaitEngineActivity(long remainingMillis) {
+  private long currentActivityGeneration() {
     synchronized (activitySignal) {
+      return activityGeneration;
+    }
+  }
+
+  /**
+   * Blocks on {@code activitySignal} for up to {@code remainingMillis}, unless {@code
+   * activityGeneration} has already advanced past {@code generationBeforeAttempt} -- meaning an
+   * engine event fired after this poll cycle's {@code attempt} check ran, so the condition may
+   * already be satisfiable and this cycle should re-check it immediately instead of blocking.
+   */
+  private void awaitEngineActivity(long remainingMillis, long generationBeforeAttempt) {
+    synchronized (activitySignal) {
+      if (activityGeneration != generationBeforeAttempt) {
+        return;
+      }
       try {
         activitySignal.wait(remainingMillis);
       } catch (final InterruptedException e) {
@@ -281,25 +308,22 @@ public final class ProcessTestHarness {
   }
 
   /**
-   * Wakes every thread blocked in {@link #awaitEngineActivity} on any relevant engine event.
-   * Deliberately does no work beyond that -- no query, no business logic -- so it stays safe to
-   * invoke synchronously from whichever thread the engine fires the event on (the async job
-   * executor, a Kafka Event Registry consumer thread, or the calling thread itself), and {@link
-   * #isFailOnException()} returns {@code false} so a defect here can never surface as a failure in
-   * the engine event dispatch it rides on.
+   * Advances {@link #activityGeneration} and wakes every thread blocked in {@link
+   * #awaitEngineActivity} on any relevant engine event. Deliberately does no work beyond that -- no
+   * query, no business logic -- so it stays safe to invoke synchronously from whichever thread the
+   * engine fires the event on (the async job executor, a Kafka Event Registry consumer thread, or
+   * the calling thread itself), and {@link #isFailOnException()} returns {@code false} so a defect
+   * here can never surface as a failure in the engine event dispatch it rides on. A non-static
+   * inner class so it can advance the enclosing harness's {@link #activityGeneration} under the
+   * same {@link #activitySignal} monitor {@link #poll} reads it under.
    */
-  private static final class ActivitySignalListener extends AbstractFlowableEventListener {
-
-    private final Object signal;
-
-    private ActivitySignalListener(Object signal) {
-      this.signal = signal;
-    }
+  private final class ActivitySignalListener extends AbstractFlowableEventListener {
 
     @Override
     public void onEvent(FlowableEvent event) {
-      synchronized (signal) {
-        signal.notifyAll();
+      synchronized (activitySignal) {
+        activityGeneration++;
+        activitySignal.notifyAll();
       }
     }
 
