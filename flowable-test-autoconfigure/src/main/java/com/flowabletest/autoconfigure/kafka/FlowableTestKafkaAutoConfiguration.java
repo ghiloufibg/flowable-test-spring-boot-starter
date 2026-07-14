@@ -22,12 +22,17 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 public class FlowableTestKafkaAutoConfiguration {
 
   /**
-   * {@code destroyMethod = ""} disables Spring's default destroy-method inference (which would
-   * otherwise call {@code EmbeddedKafkaBroker.destroy()} when *this* context closes). The broker is
-   * a JVM-wide singleton shared across every context that discovers Kafka Event Registry channels
-   * ({@link EmbeddedFlowableKafkaSupport}, started at most once per JVM) and already has its own
-   * JVM shutdown hook -- letting each context additionally destroy it on close causes a second,
-   * failing shutdown attempt against an already-stopped broker.
+   * {@code destroyMethod = ""} disables Spring's destroy-method inference/named-method lookup, but
+   * {@code EmbeddedKafkaBroker} extends Spring's own {@code DisposableBean}, and {@code
+   * DisposableBeanAdapter} invokes that interface callback unconditionally regardless of {@code
+   * destroyMethod} -- so {@code destroyMethod = ""} alone does not stop *this* context from calling
+   * {@code destroy()} on the broker when it closes. The broker is a JVM-wide singleton shared
+   * across every context that discovers Kafka Event Registry channels ({@link
+   * EmbeddedFlowableKafkaSupport}, started at most once per JVM) and already has its own JVM
+   * shutdown hook as its one true owner; {@link SharedEmbeddedKafkaBrokerGuard} wraps the returned
+   * broker so that interface-driven per-context {@code destroy()} calls are no-ops, leaving the
+   * shutdown hook's call the only one that actually tears it down. See that class's Javadoc for the
+   * failure this prevents.
    */
   @Bean(destroyMethod = "")
   @ConditionalOnMissingBean
@@ -41,7 +46,7 @@ public class FlowableTestKafkaAutoConfiguration {
               + "this indicates flowable-test-spring-boot-starter's own EnvironmentPostProcessor "
               + "did not run as expected.");
     }
-    return broker;
+    return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(broker);
   }
 
   /**
