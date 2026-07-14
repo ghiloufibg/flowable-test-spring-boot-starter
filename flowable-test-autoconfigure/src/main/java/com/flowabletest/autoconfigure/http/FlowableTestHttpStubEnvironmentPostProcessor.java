@@ -3,9 +3,12 @@ package com.flowabletest.autoconfigure.http;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.Ordered;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -25,6 +28,14 @@ import org.springframework.util.ClassUtils;
  * {@code @MockExternalService} overrides are handled separately by {@link
  * MockExternalServiceContextCustomizer} -- see its Javadoc for why that requires a different Spring
  * TestContext extension point than this class.
+ *
+ * <p>{@code flowable.test.http-mocks.services} (optional, opt-in) replaces the scan with an
+ * explicit, declared list of service names -- design doc {@code
+ * claudedocs/http-mock-explicit-service-registry-design.md}. Absent (the default), behavior is
+ * unchanged: every immediate subfolder under {@code root} is discovered and started, exactly as the
+ * plain scan always has. Declared, it becomes the sole source of which services start here; folders
+ * on the classpath that aren't declared are left alone, and a declared name with no matching {@code
+ * mappings} folder fails fast, right here, before the {@code ApplicationContext} starts refreshing.
  */
 public final class FlowableTestHttpStubEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
@@ -49,8 +60,15 @@ public final class FlowableTestHttpStubEnvironmentPostProcessor
         environment.getProperty("flowable.test.http-mocks.root", "classpath:httpmocks");
     final HttpMockDiscovery discovery =
         new HttpMockDiscovery(new PathMatchingResourcePatternResolver());
+    final List<String> declaredServices =
+        Binder.get(environment)
+            .bind("flowable.test.http-mocks.services", Bindable.listOf(String.class))
+            .orElse(List.of());
     final Map<String, String> services =
-        new LinkedHashMap<>(discovery.discoverDefaultServices(root));
+        new LinkedHashMap<>(
+            declaredServices.isEmpty()
+                ? discovery.discoverDefaultServices(root)
+                : discovery.resolveDeclaredServices(root, declaredServices));
 
     if (services.isEmpty()) {
       return;

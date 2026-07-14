@@ -144,6 +144,24 @@ reflects whichever server a test class's own `@MockExternalService` override (if
 points at, and each WireMock server's lifetime is tied to the Spring test contexts that reference
 it rather than the whole JVM — it's freed once the last referencing context closes.
 
+By default, every immediate subfolder under the configured root is discovered and started this
+way — fine as long as folder names line up with the `@Value`/`@ConfigurationProperties` prefixes
+production code actually reads. Declare `flowable.test.http-mocks.services` to make that dependency
+explicit instead of implicit: only the listed names are started (a declared name with no matching
+`mappings` folder fails fast, before the context even starts refreshing), and any other folder on
+the classpath — e.g. one that only ever exists as an `@MockExternalService(stubs = ...)` override
+target — is left alone instead of also starting an unused server:
+
+```yaml
+flowable:
+  test:
+    http-mocks:
+      services: # optional; absent = discover every subfolder (unchanged default)
+        - fraud-check-service
+```
+
+See `claudedocs/http-mock-explicit-service-registry-design.md` for the full rationale.
+
 ### Process assertions / harness
 
 `ProcessTestHarness` (autowired once a `ProcessEngine` exists) wraps the

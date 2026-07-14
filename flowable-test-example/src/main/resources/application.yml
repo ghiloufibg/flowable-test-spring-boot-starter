@@ -42,6 +42,15 @@ flowable:
   history-level: audit
   async-executor-activate: true
 
+  test:
+    http-mocks:
+      # Explicit allow-list (claudedocs/http-mock-explicit-service-registry-design.md): the only
+      # real default is fraud-check-service. fraud-check-service-manual-review is deliberately left
+      # off this list -- it exists purely as an @MockExternalService(stubs = ...) override target
+      # for OrderManualReviewFlowTest/PaymentCallbackEventRegistryTest, never as its own default.
+      services:
+        - fraud-check-service
+
 # Real-deployment placeholder -- irrelevant under test, where the starter's HTTP-mock
 # auto-discovery injects this property before context refresh (see
 # src/test/resources/httpmocks/fraud-check-service).

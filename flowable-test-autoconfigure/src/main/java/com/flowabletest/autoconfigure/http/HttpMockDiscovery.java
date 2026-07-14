@@ -2,6 +2,7 @@ package com.flowabletest.autoconfigure.http;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +51,39 @@ public final class HttpMockDiscovery {
     } catch (final IOException e) {
       throw new IllegalStateException(
           "Failed to scan for HTTP mock service folders under '" + root + "'", e);
+    }
+    return Map.copyOf(services);
+  }
+
+  /**
+   * Resolves an explicitly declared list of service names (design doc: {@code
+   * claudedocs/http-mock-explicit-service-registry-design.md}) against the {@code root/<name>}
+   * convention, instead of discovering the set of names by scanning the classpath. Unlike {@link
+   * #discoverDefaultServices(String)}, this fails fast -- for every declared name, not just the
+   * ones a scan happens to turn up -- when its {@code mappings} folder doesn't exist, so a missing
+   * or misspelled service is caught before the {@code ApplicationContext} even starts refreshing,
+   * with an error naming exactly which declared service is missing.
+   *
+   * @return service name -> classpath location, same shape as {@link #discoverDefaultServices}, in
+   *     declaration order
+   */
+  public Map<String, String> resolveDeclaredServices(String root, List<String> declaredNames) {
+    final String rawRoot = stripClasspathPrefix(root);
+    final Map<String, String> services = new LinkedHashMap<>();
+    for (final String name : declaredNames) {
+      final String location = rawRoot + "/" + name;
+      final Resource mappingsResource =
+          resourcePatternResolver.getResource("classpath:" + location + "/mappings");
+      if (!mappingsResource.exists()) {
+        throw new IllegalStateException(
+            "flowable.test.http-mocks.services declares '"
+                + name
+                + "' but no mappings folder was found at classpath:"
+                + location
+                + "/mappings -- check for a typo in `services`, or that the folder exists under "
+                + "src/test/resources.");
+      }
+      services.put(name, location);
     }
     return Map.copyOf(services);
   }
