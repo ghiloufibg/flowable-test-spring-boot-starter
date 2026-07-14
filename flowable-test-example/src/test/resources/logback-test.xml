@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/base.xml" />
+
+    <!-- kafka-clients' own TestUtils.tempDirectory() registers a JVM shutdown hook to delete its
+         temp directory, independent of and racing EmbeddedKafkaKraftBroker's own close, a known
+         upstream bug (KAFKA-17574/KAFKA-17575, fixed in Kafka 4.0.0, not available to Flowable
+         7.x's Spring Boot 3 dependency chain). On Windows this surfaces as a harmless but noisy
+         ERROR-level FileSystemException at JVM exit, well after every test has already passed;
+         silenced here rather than chased upstream. A test-scope application.yml can't be used for
+         this override instead: Spring Boot resolves classpath:/application.yml to a single
+         first-found resource, so one under src/test/resources would shadow, not layer on top of,
+         this module's src/main/resources/application.yml, which src/test actually depends on for
+         JPA/Kafka/http-mocks config, unlike flowable-test-autoconfigure which has no such file to
+         conflict with. -->
+    <logger name="org.apache.kafka.test.TestUtils" level="OFF" />
+</configuration>
