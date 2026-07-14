@@ -143,6 +143,10 @@ public final class ProcessTestHarness {
    * flowable.test.processes.deploy} or {@code @FlowableProcessTest(processes = ...)}. {@code
    * enableDuplicateFiltering()} keeps a repeated call for the same process idempotent -- no new
    * process-definition version is created if the BPMN content hasn't changed.
+   *
+   * @param processName the BPMN <b>file</b> name (e.g. {@code "order-processing"}), not the {@code
+   *     <process id="...">} declared inside it (e.g. {@code "orderProcessing"}) -- the two commonly
+   *     differ by hyphenation
    */
   public void deployProcess(String processName) {
     repositoryService

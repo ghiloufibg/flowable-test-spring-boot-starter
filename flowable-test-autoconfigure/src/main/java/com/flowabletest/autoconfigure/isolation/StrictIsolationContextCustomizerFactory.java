@@ -11,8 +11,9 @@ import org.springframework.test.context.ContextCustomizerFactory;
 /**
  * Registered via {@code META-INF/spring.factories} under {@code
  * org.springframework.test.context.ContextCustomizerFactory} -- see {@link
- * StrictIsolationContextCustomizer} for why poisoning the cache key, rather than anything done in
- * {@code customizeContext}, is what actually forces a new {@code ApplicationContext}.
+ * StrictIsolationContextCustomizer} for why poisoning the cache key is what forces a new {@code
+ * ApplicationContext} in the first place, and what its {@code customizeContext} additionally does
+ * once that new context exists.
  */
 public final class StrictIsolationContextCustomizerFactory implements ContextCustomizerFactory {
 

@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.annotation.FlowableTestIsolation;
+import java.sql.Connection;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.TestContextManager;
@@ -40,6 +42,29 @@ class StrictIsolationIntegrationTest {
     assertThat(first).isNotSameAs(second);
   }
 
+  /**
+   * Reproduces the exact footgun {@link StrictIsolationContextCustomizer} exists to close: two
+   * {@code SEPARATE_CONTEXT} classes that both explicitly pin the identical, fixed {@code
+   * spring.datasource.url} a consumer's shared {@code application.yml} commonly hardcodes (e.g.
+   * {@code jdbc:h2:mem:testdb}). Without the customizer's override, both contexts would connect to
+   * the exact same physical H2 database despite being genuinely separate {@code
+   * ApplicationContext}s.
+   */
+  @Test
+  void separateContextClassesGetIsolatedDatabasesEvenWithAnIdenticalPinnedH2Url() throws Exception {
+    final ApplicationContext first = contextFor(FixedUrlSeparateContextTestClassA.class);
+    final ApplicationContext second = contextFor(FixedUrlSeparateContextTestClassB.class);
+
+    assertThat(jdbcUrlOf(first)).isNotEqualTo(jdbcUrlOf(second));
+  }
+
+  private static String jdbcUrlOf(ApplicationContext context) throws Exception {
+    final DataSource dataSource = context.getBean(DataSource.class);
+    try (Connection connection = dataSource.getConnection()) {
+      return connection.getMetaData().getURL();
+    }
+  }
+
   private static ApplicationContext contextFor(Class<?> testClass) throws Exception {
     final TestContextManager testContextManager = new TestContextManager(testClass);
     testContextManager.beforeTestClass();
@@ -61,4 +86,19 @@ class StrictIsolationIntegrationTest {
       classes = SampleFlowableApplication.class,
       isolation = FlowableTestIsolation.SEPARATE_CONTEXT)
   static class SeparateContextTestClassB {}
+
+  private static final String PINNED_H2_URL =
+      "spring.datasource.url=jdbc:h2:mem:strict-isolation-fixed-name;DB_CLOSE_DELAY=-1";
+
+  @FlowableProcessTest(
+      classes = SampleFlowableApplication.class,
+      isolation = FlowableTestIsolation.SEPARATE_CONTEXT,
+      properties = PINNED_H2_URL)
+  static class FixedUrlSeparateContextTestClassA {}
+
+  @FlowableProcessTest(
+      classes = SampleFlowableApplication.class,
+      isolation = FlowableTestIsolation.SEPARATE_CONTEXT,
+      properties = PINNED_H2_URL)
+  static class FixedUrlSeparateContextTestClassB {}
 }

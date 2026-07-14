@@ -43,8 +43,11 @@ public final class ProcessDeploymentDiscovery {
                 + name
                 + "' but no BPMN file was found at classpath:"
                 + location
-                + " -- check for a typo in `deploy`, or that the file exists under "
-                + "src/test/resources (or src/main/resources).");
+                + " -- check for a typo in `deploy`, that the file exists under "
+                + "src/test/resources (or src/main/resources), and that '"
+                + name
+                + "' is the BPMN *file* name (e.g. 'order-processing'), not the process id "
+                + "declared inside it (e.g. 'orderProcessing').");
       }
       processes.put(name, location);
     }

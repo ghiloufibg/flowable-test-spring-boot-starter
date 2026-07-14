@@ -25,7 +25,9 @@ import org.springframework.util.ClassUtils;
  * {@code flowable.check-process-definitions=false} is injected via {@code addFirst} (winning even
  * over a consumer's own {@code application.yml}) so this starter's allow-list becomes the sole
  * mechanism deciding the default deployment set, rather than racing Flowable's own scan for every
- * file it can still find under the same root.
+ * file it can still find under the same root. Each declared name is the BPMN <b>file</b> name (e.g.
+ * {@code "order-processing"}), not the {@code <process id="...">} declared inside it (e.g. {@code
+ * "orderProcessing"}) -- the two commonly differ by hyphenation.
  *
  * <p>The resolved {@code name -> classpathLocation} map is stashed as an {@code Environment}
  * property (see {@link ProcessDeploymentRegistry}) for {@link
