@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Independently deployable child process, invoked only via callActivity from
+  shipment-orchestration.bpmn20.xml. Exists to prove the starter can track and assert against a
+  call activity's child process instance (see ProcessTestHarness#awaitCallActivityChild), including
+  a boundary-timer escalation branch:
+    - a userTask / candidateGroups wait state (reused pattern, new context)
+    - a boundary timer event that escalates to a backup-carrier service task when the warehouse
+      doesn't confirm pickup in time. The duration is realistic (hours, not seconds) because the
+      test suite fires it deterministically via ManagementService#moveTimerToExecutableJob rather
+      than waiting on wall-clock time.
+  No BPMNDI: this file is not meant to round-trip through a BPMN modeler, only to execute.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowabletest.com/example"
+             exporter="flowable-test-example"
+             exporterVersion="1.0">
+
+  <process id="carrierDispatch" name="Carrier Dispatch" isExecutable="true">
+
+    <startEvent id="carrierDispatchStartEvent" name="Dispatch Requested"/>
+    <sequenceFlow id="flow1" sourceRef="carrierDispatchStartEvent" targetRef="awaitCarrierPickupTask"/>
+
+    <userTask id="awaitCarrierPickupTask" name="Await Carrier Pickup"
+              flowable:candidateGroups="warehouse">
+      <documentation>
+        Warehouse staff confirm carrier pickup by completing this task with "carrierStatus" =
+        "DISPATCHED". If nobody acts before carrierPickupTimeoutBoundary fires, a backup carrier is
+        scheduled automatically instead.
+      </documentation>
+    </userTask>
+    <sequenceFlow id="flow2" sourceRef="awaitCarrierPickupTask" targetRef="shipmentDispatchedEndEvent"/>
+
+    <boundaryEvent id="carrierPickupTimeoutBoundary" attachedToRef="awaitCarrierPickupTask"
+                   cancelActivity="true">
+      <timerEventDefinition>
+        <timeDuration>PT4H</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+    <sequenceFlow id="flow3" sourceRef="carrierPickupTimeoutBoundary" targetRef="scheduleBackupCarrierTask"/>
+
+    <serviceTask id="scheduleBackupCarrierTask" name="Schedule Backup Carrier"
+                 flowable:delegateExpression="${scheduleBackupCarrierDelegate}"/>
+    <sequenceFlow id="flow4" sourceRef="scheduleBackupCarrierTask" targetRef="shipmentEscalatedEndEvent"/>
+
+    <endEvent id="shipmentDispatchedEndEvent" name="Shipment Dispatched"/>
+    <endEvent id="shipmentEscalatedEndEvent" name="Shipment Escalated"/>
+
+  </process>
+</definitions>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Warehouse fulfillment, deliberately decoupled from order-processing.bpmn20.xml so this module
+  proves the starter against BPMN patterns that flow doesn't need:
+    - an embedded (non-event) subProcess grouping "prepare shipment" work
+    - a multi-instance service task, one instance per line item (loopCardinality against a plain
+      process variable, no line-item collection variable needed)
+    - a callActivity invoking a second, independently deployed process definition
+      (carrier-dispatch.bpmn20.xml), proving parent/child process-instance correlation
+  Never started from OrderProcessService: this and carrier-dispatch.bpmn20.xml are their own
+  standalone scenario, started directly by ShipmentOrchestrationCallActivityFlowTest.
+  No BPMNDI: this file is not meant to round-trip through a BPMN modeler, only to execute.
+-->
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://www.flowabletest.com/example"
+             exporter="flowable-test-example"
+             exporterVersion="1.0">
+
+  <process id="shipmentOrchestration" name="Shipment Orchestration" isExecutable="true">
+
+    <startEvent id="shipmentStartEvent" name="Shipment Requested"/>
+    <sequenceFlow id="flow1" sourceRef="shipmentStartEvent" targetRef="prepareShipmentSubProcess"/>
+
+    <subProcess id="prepareShipmentSubProcess" name="Prepare Shipment">
+      <startEvent id="prepareSubProcessStart"/>
+      <sequenceFlow id="subFlow1" sourceRef="prepareSubProcessStart" targetRef="packLineItemTask"/>
+
+      <serviceTask id="packLineItemTask" name="Pack Line Item"
+                   flowable:delegateExpression="${packLineItemDelegate}">
+        <documentation>
+          One instance per line item: loopCardinality reads the plain "itemCount" process variable
+          rather than requiring callers to build a line-item collection just to size the loop.
+        </documentation>
+        <multiInstanceLoopCharacteristics isSequential="false">
+          <loopCardinality>${itemCount}</loopCardinality>
+        </multiInstanceLoopCharacteristics>
+      </serviceTask>
+      <sequenceFlow id="subFlow2" sourceRef="packLineItemTask" targetRef="generateShippingLabelTask"/>
+
+      <serviceTask id="generateShippingLabelTask" name="Generate Shipping Label"
+                   flowable:delegateExpression="${generateShippingLabelDelegate}"/>
+      <sequenceFlow id="subFlow3" sourceRef="generateShippingLabelTask" targetRef="prepareSubProcessEnd"/>
+
+      <endEvent id="prepareSubProcessEnd"/>
+    </subProcess>
+    <sequenceFlow id="flow2" sourceRef="prepareShipmentSubProcess"
+                  targetRef="dispatchViaCarrierCallActivity"/>
+
+    <!-- Independently deployed process definition, carrier-dispatch.bpmn20.xml -->
+    <callActivity id="dispatchViaCarrierCallActivity" name="Dispatch via Carrier"
+                  calledElement="carrierDispatch">
+      <extensionElements>
+        <flowable:in source="orderId" target="orderId"/>
+        <flowable:in source="trackingNumber" target="trackingNumber"/>
+        <flowable:out source="carrierStatus" target="carrierStatus"/>
+      </extensionElements>
+    </callActivity>
+    <sequenceFlow id="flow3" sourceRef="dispatchViaCarrierCallActivity"
+                  targetRef="shipmentCompletedEndEvent"/>
+
+    <endEvent id="shipmentCompletedEndEvent" name="Shipment Completed"/>
+
+  </process>
+</definitions>
