@@ -11,27 +11,29 @@ import org.springframework.test.context.TestExecutionListener;
 import org.springframework.util.ClassUtils;
 
 /**
- * Layer 2 (annotation) of the process-deployment mechanism: deploys
- * {@code @FlowableProcessTest(processes = {...})} on top of whatever Layer 1's default allow-list
- * already deployed. Has to be a {@code TestExecutionListener}, not a {@code
- * ContextCustomizerFactory}: {@code ContextCustomizer.customizeContext} runs before {@code
- * refresh()}, when {@code RepositoryService} doesn't exist yet, and {@code processes()} isn't one
- * of the annotation attributes Spring's {@code MergedContextConfiguration} considers for cache-key
- * purposes anyway -- it only needs bean access at the right lifecycle point, not a cache-key
- * contribution (contrast with {@code isolation()}, read by {@code
- * StrictIsolationContextCustomizerFactory} precisely because it does need to affect the cache key).
+ * Deploys the BPMN processes declared on {@code @FlowableProcessTest(processes = {...})}, on top
+ * of whatever {@link FlowableTestProcessDeploymentAutoConfiguration}'s default allow-list already
+ * deployed.
  *
- * <p>{@code enableDuplicateFiltering()} is load-bearing, not optional: {@link #beforeTestClass}
- * fires every time, including every time Spring reuses a cached context across multiple classes
- * declaring the same {@code processes()} -- without it, each reuse would create a brand-new
- * deployment and process-definition version for byte-identical content.
+ * <p>Implemented as a {@link TestExecutionListener} rather than a {@code ContextCustomizerFactory}
+ * because {@code ContextCustomizer.customizeContext} runs before {@code refresh()}, when {@link
+ * RepositoryService} doesn't exist yet, and {@code processes()} isn't one of the annotation
+ * attributes Spring's {@code MergedContextConfiguration} considers for cache-key purposes anyway --
+ * it only needs bean access at the right lifecycle point, not a cache-key contribution (contrast
+ * with {@code isolation()}, read by {@code StrictIsolationContextCustomizerFactory} precisely
+ * because it does need to affect the cache key).
  *
- * <p>Registered via {@code META-INF/spring.factories} under {@code
- * org.springframework.test.context.TestExecutionListener}, which means it is unconditionally
- * instantiated for every test using the Spring TestContext framework, including consumers with no
- * Flowable on their classpath at all. {@link #classPresent} guards against that, checked before any
- * method referencing a Flowable-typed signature runs -- same classpath-guard discipline already
- * used by {@code FlowableKafkaConsumerLifecycleTestExecutionListener}.
+ * <p>{@link #beforeTestClass} calls {@code enableDuplicateFiltering()} on every deployment, which is
+ * load-bearing rather than optional: this method fires every time, including every time Spring
+ * reuses a cached context across multiple classes declaring the same {@code processes()} -- without
+ * it, each reuse would create a brand-new deployment and process-definition version for
+ * byte-identical content.
+ *
+ * <p>Registered via {@code META-INF/spring.factories} under {@link TestExecutionListener}, so it is
+ * unconditionally instantiated for every test using the Spring TestContext framework, including
+ * consumers with no Flowable on their classpath at all. {@link #classPresent} guards against that,
+ * checked before any method referencing a Flowable-typed signature runs -- the same classpath-guard
+ * discipline used by {@code FlowableKafkaConsumerLifecycleTestExecutionListener}.
  */
 public final class FlowableProcessAnnotationDeploymentTestExecutionListener
     implements TestExecutionListener {

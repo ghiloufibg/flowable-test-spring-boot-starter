@@ -1,9 +1,10 @@
 package com.flowabletest.core.annotation;
 
 /**
- * Controls whether a {@link FlowableProcessTest} class may share its {@code ApplicationContext}
- * (and therefore its {@code ProcessEngine}, database, process instances, history, and jobs) with
- * other test classes via Spring's {@code TestContext} cache.
+ * Controls whether a {@link FlowableProcessTest} class may share its {@code ApplicationContext} —
+ * and therefore its {@code ProcessEngine}, database, process instances, history, and jobs — with
+ * other test classes through Spring's {@code TestContext} cache. Assigned to {@link
+ * FlowableProcessTest#isolation()}.
  */
 public enum FlowableTestIsolation {
 

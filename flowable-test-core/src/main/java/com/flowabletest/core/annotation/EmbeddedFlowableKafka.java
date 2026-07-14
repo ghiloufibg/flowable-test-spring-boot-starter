@@ -7,20 +7,20 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Optional fine-tuning for the embedded Kafka broker that {@code
- * FlowableTestKafkaAutoConfiguration} starts automatically whenever {@code EmbeddedKafkaBroker}
- * (spring-kafka-test) is on the classpath. The topic list itself is <b>not</b> declared here -- it
- * is derived automatically by scanning the consumer's Flowable Kafka Event Registry {@code
- * *.channel} descriptors for {@code channelType: "kafka"} entries. This annotation only exists for
- * topics that exist outside that registry (e.g. a topic a test publishes to directly without a
- * declared inbound channel).
+ * Configures additional Kafka topics for the embedded broker that {@code
+ * FlowableTestKafkaAutoConfiguration} starts whenever {@code EmbeddedKafkaBroker}
+ * (spring-kafka-test) is on the classpath. Most topics never need this annotation: they are
+ * discovered automatically by scanning the consumer's Flowable Kafka Event Registry {@code
+ * *.channel} descriptors for {@code channelType: "kafka"} entries. Declare a topic here only when
+ * it exists outside that registry, for example one a test publishes to directly without a declared
+ * inbound channel.
  *
- * <p>Applied via a {@code ContextCustomizer}, not the environment post-processor that does the
- * Event Registry scan (which has no visibility into this annotation -- the same reason
- * {@code @MockExternalService} needs its own customizer). Because the embedded broker is a JVM-wide
- * singleton started at most once per JVM, {@link #partitions()} only ever applies to this
- * annotation's own {@link #additionalTopics()}: it cannot retroactively change the partition count
- * of topics that the Event Registry scan (or an earlier test class in the same JVM) already
+ * <p>Applied through a {@code ContextCustomizer} rather than the environment post-processor that
+ * performs the Event Registry scan, since that post-processor has no visibility into per-class
+ * annotations ({@code @MockExternalService} needs its own customizer for the same reason). Because
+ * the embedded broker is a JVM-wide singleton started at most once per JVM, {@link #partitions()}
+ * applies only to this annotation's own {@link #additionalTopics()} and cannot change the partition
+ * count of a topic that the Event Registry scan, or an earlier test class in the same JVM, already
  * created.
  */
 @Target(ElementType.TYPE)

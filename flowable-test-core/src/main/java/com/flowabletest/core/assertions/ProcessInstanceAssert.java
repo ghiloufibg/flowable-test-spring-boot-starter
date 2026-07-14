@@ -3,6 +3,7 @@ package com.flowabletest.core.assertions;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsAttachment;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsFormatter;
+import com.flowabletest.core.harness.ProcessTestHarness;
 import org.assertj.core.api.AbstractAssert;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
@@ -11,17 +12,16 @@ import org.slf4j.LoggerFactory;
 
 /**
  * AssertJ-style assertions over a process instance ID. Deliberately domain-blind: every method
- * takes plain activity IDs / candidate group names as arguments, never a project-specific concept.
+ * takes plain activity IDs or candidate group names as arguments, never a project-specific concept.
  *
- * <p>Constructed via {@link com.flowabletest.core.harness.ProcessTestHarness#assertThat(String)}
- * rather than a bare static factory, since evaluating these assertions requires the consumer's own
- * {@code RuntimeService}/{@code HistoryService} beans.
+ * <p>Obtained from {@link ProcessTestHarness#assertThat(String)} rather than a bare static factory,
+ * since evaluating these assertions requires the consumer's own {@code RuntimeService} and {@code
+ * HistoryService} beans.
  *
- * <p>Every failure message is enriched with a BPMN diagnostics snapshot (current activity,
- * variables, activity trail, pending tasks, dead-letter job failures) of exactly this process
- * instance, since the failing assertion already knows precisely which one is relevant. {@code
- * diagnosticsCollector} may be {@code null} (diagnostics disabled via {@code
- * flowable.test.diagnostics.enabled=false}), in which case failure messages are unenriched.
+ * <p>Every failure message is enriched with a BPMN diagnostics snapshot of exactly the process
+ * instance under test — current activity, variables, activity trail, pending tasks, and dead-letter
+ * job failures — attached as a suppressed exception. Diagnostics are omitted from the failure
+ * message when {@code flowable.test.diagnostics.enabled=false} leaves the collector {@code null}.
  */
 public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceAssert, String> {
 

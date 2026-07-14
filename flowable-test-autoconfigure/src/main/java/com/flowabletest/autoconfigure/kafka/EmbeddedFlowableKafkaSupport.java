@@ -7,33 +7,28 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 
 /**
- * Starts the embedded Kafka broker(s) used by {@link FlowableTestKafkaEnvironmentPostProcessor}.
- * Deliberately not a Spring bean: it must be usable from an {@code EnvironmentPostProcessor}, which
- * runs before any {@code ApplicationContext} exists. {@link FlowableTestKafkaAutoConfiguration}
- * exposes the started instance as a regular bean afterwards, once the context is available, purely
- * so consumers can {@code @Autowired EmbeddedKafkaBroker} if they need direct access.
+ * Starts and owns the embedded Kafka broker(s) used by {@link
+ * FlowableTestKafkaEnvironmentPostProcessor}. Deliberately not a Spring bean: it must be usable
+ * from an {@code EnvironmentPostProcessor}, which runs before any {@code ApplicationContext}
+ * exists. {@link FlowableTestKafkaAutoConfiguration} exposes the started instance as a regular
+ * bean afterwards so consumers can {@code @Autowired EmbeddedKafkaBroker} directly.
  *
  * <p>Two independent start paths, selected by {@link FlowableKafkaBrokerScopeCondition}: {@link
  * #startIfNeeded(Set, int)} starts at most one JVM-wide singleton broker ({@code shared}, the
- * default); {@link #startFresh(Set, int)} starts a brand-new broker every call ({@code
+ * default); {@link #startFresh(Set, int)} starts a brand-new broker on every call ({@code
  * per-context}). {@link #currentPerContext()} hands the most recently {@link #startFresh started}
- * broker to the {@code @Bean} method that exposes it, relying on the same "at most one Spring
- * context builds at a time" sequential-execution assumption already documented for {@code shared}
- * mode's lifecycle listener -- the post-processor and the bean method that reads this field back
- * run synchronously within the same context's refresh.
+ * broker back to the {@code @Bean} method that exposes it, relying on the post-processor and that
+ * bean method running synchronously within the same context's refresh.
  *
- * <p>{@link #acquireLease()}/{@link #releaseLease()} track how many still-open Spring contexts
- * currently hold an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker, mirroring {@code
- * EmbeddedPostgresSupport}'s equivalent mechanism for the shared embedded Postgres server -- see
- * that class's Javadoc for why a naive "close as soon as the count reaches zero" policy is wrong
- * for a resource meant to be reused indefinitely across many, non-overlapping test contexts over
- * the JVM's whole lifetime, and why the count is instead consulted only once, by {@link
- * #closeAfterOutstandingLeasesDrain}, when {@link #startIfNeeded}'s own JVM shutdown hook actually
- * fires at JVM exit. Unlike the Postgres case, this hardens the shared broker's shutdown against
- * the same class of race rather than fixing an observed failure: Kafka client shutdown paths
- * (producer close, consumer container stop) already tolerate an unreachable broker gracefully
- * (logging a {@code WARN} and moving on), so the race was never seen to fail a destroy-method call
- * here the way it did for Flowable's JDBC-dependent engine beans.
+ * <p>{@link #acquireLease()}/{@link #releaseLease()} count how many still-open Spring contexts
+ * hold an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker. That count is consulted
+ * only once, by {@link #closeAfterOutstandingLeasesDrain}, when the shutdown hook registered in
+ * {@link #startIfNeeded} fires at JVM exit -- the broker is meant to be reused indefinitely across
+ * many, non-overlapping test contexts for the JVM's whole lifetime, so it must not be torn down
+ * simply because the count momentarily reaches zero between contexts. Kafka client shutdown paths
+ * (producer close, consumer container stop) already tolerate an unreachable broker gracefully, so
+ * this hardens the shared broker's shutdown against a class of race rather than fixing an observed
+ * failure.
  */
 final class EmbeddedFlowableKafkaSupport {
 

@@ -10,14 +10,13 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourcePatternResolver;
 
 /**
- * Reads Flowable's own Kafka Event Registry {@code *.channel} JSON descriptors (a generic Flowable
- * convention, not specific to any one consumer project) and extracts the Kafka topic names they
- * declare, so an embedded broker can be started with the right topics without the consumer having
- * to hand-maintain a topic list.
+ * Reads Flowable's own Kafka Event Registry {@code *.channel} JSON descriptors and extracts the
+ * Kafka topic names they declare, so an embedded broker can be started with the right topics
+ * without the consumer having to hand-maintain a topic list.
  *
  * <p>Recognizes both shapes Flowable uses: outbound channels declare a single {@code "topic"}
  * string, inbound channels declare a {@code "topics"} array. Only descriptors with {@code "type":
- * "kafka"} are considered -- other transports (e.g. JMS, RabbitMQ) are ignored.
+ * "kafka"} are considered; other transports (e.g. JMS, RabbitMQ) are ignored.
  */
 public final class EventRegistryChannelScanner {
 

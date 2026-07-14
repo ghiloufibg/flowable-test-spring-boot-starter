@@ -11,10 +11,12 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
 
 /**
- * Registered via {@code META-INF/spring.factories} under {@code
- * org.springframework.test.context.ContextCustomizerFactory} -- see {@link
- * MockExternalServiceContextCustomizer} for why this SPI, not an {@code EnvironmentPostProcessor},
- * is what implements {@link MockExternalService}.
+ * Creates a {@link MockExternalServiceContextCustomizer} for any test class annotated with one or
+ * more {@link MockExternalService} annotations, or backs off (returns {@code null}) if the test
+ * class has none. Registered via {@code META-INF/spring.factories} under {@link
+ * ContextCustomizerFactory}; see {@link MockExternalServiceContextCustomizer} for why this
+ * TestContext SPI, rather than an {@code EnvironmentPostProcessor}, is what implements {@link
+ * MockExternalService}.
  */
 public final class MockExternalServiceContextCustomizerFactory implements ContextCustomizerFactory {
 

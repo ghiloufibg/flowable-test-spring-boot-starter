@@ -7,10 +7,11 @@ import org.springframework.core.env.Environment;
 
 /**
  * Encodes/decodes the {@code name -> classpathLocation} map {@link
- * FlowableTestProcessDeploymentEnvironmentPostProcessor} resolves into a single {@code Environment}
- * property, so {@link FlowableTestProcessDeploymentAutoConfiguration}'s deployment bean can read it
- * back once {@code RepositoryService} exists -- mirrors {@code HttpMockServiceRegistry}'s
- * comma/equals-delimited encode/resolve idiom.
+ * FlowableTestProcessDeploymentEnvironmentPostProcessor} resolves into a single, comma/equals-
+ * delimited {@code Environment} property (mirroring {@code HttpMockServiceRegistry}'s encoding
+ * idiom), so {@link FlowableTestProcessDeploymentAutoConfiguration}'s deployment bean can read it
+ * back once {@code RepositoryService} exists. {@link #encode} rejects any name or location
+ * containing a delimiter character.
  */
 final class ProcessDeploymentRegistry {
 

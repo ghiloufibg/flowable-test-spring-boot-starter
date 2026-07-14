@@ -14,8 +14,13 @@ import org.springframework.core.Ordered;
  * falls outside this starter's supported range, instead of letting a version mismatch surface later
  * as an obscure {@code NoSuchMethodError} mid-test.
  *
- * <p>Runs first among this starter's auto-configurations so an unsupported engine is reported
- * before any other capability tries to use it.
+ * <p>Activates once a {@code ProcessEngine} bean exists and {@code RuntimeService} is on the
+ * classpath. Runs {@code afterName} Flowable's own {@code ProcessEngineAutoConfiguration} but at
+ * {@link AutoConfigureOrder}'s {@link Ordered#HIGHEST_PRECEDENCE HIGHEST_PRECEDENCE} among this
+ * starter's own auto-configurations, so an unsupported engine is reported before any other
+ * capability tries to use it. {@link #flowableCompatibilityGuard} returns an {@link
+ * InitializingBean} that compares {@link ProcessEngine#VERSION} against {@link
+ * FlowableVersions#isSupported}.
  */
 @AutoConfiguration(afterName = "org.flowable.spring.boot.ProcessEngineAutoConfiguration")
 @AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)

@@ -9,11 +9,10 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
 
 /**
- * Registered via {@code META-INF/spring.factories} under {@code
- * org.springframework.test.context.ContextCustomizerFactory} -- see {@link
- * StrictIsolationContextCustomizer} for why poisoning the cache key is what forces a new {@code
- * ApplicationContext} in the first place, and what its {@code customizeContext} additionally does
- * once that new context exists.
+ * {@link ContextCustomizerFactory} that activates {@link StrictIsolationContextCustomizer} for
+ * test classes annotated with {@link FlowableProcessTest} whose {@link FlowableTestIsolation} is
+ * {@code SEPARATE_CONTEXT}. Registered via {@code META-INF/spring.factories} under {@link
+ * ContextCustomizerFactory}.
  */
 public final class StrictIsolationContextCustomizerFactory implements ContextCustomizerFactory {
 

@@ -10,23 +10,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 
 /**
- * Starts (at most once per JVM) the shared embedded Postgres server used by {@code
- * instance-scope=shared} mode, mirroring {@code EmbeddedFlowableKafkaSupport}'s and {@code
- * EmbeddedFlowableHttpMockSupport}'s JVM-wide-singleton pattern. Deliberately split into two
- * responsibilities: {@link #sharedServer()} (lazy, at-most-once native process start) and {@link
- * #freshDatabase(EmbeddedPostgres)} (cheap, called once per Spring context, provisions an isolated
- * logical database on the already-running server via {@code CREATE DATABASE} rather than forking a
- * new process).
+ * Starts, at most once per JVM, the shared embedded Postgres server backing {@code
+ * instance-scope=shared} mode -- the same JVM-wide-singleton pattern used elsewhere in this module
+ * for the shared embedded Kafka broker and shared WireMock servers. Wired into {@link
+ * FlowableTestDatasourceAutoConfiguration} via {@link EmbeddedPostgresSharedServerLease}.
+ *
+ * <p>Split into two responsibilities: {@link #sharedServer()} lazily starts the native process at
+ * most once, and {@link #freshDatabase(EmbeddedPostgres)} is called once per Spring context to
+ * provision an isolated logical database on the already-running server via {@code CREATE DATABASE}
+ * rather than forking a new process.
  *
  * <p>{@link #acquireLease()}/{@link #releaseLease()} track how many still-open Spring contexts
- * currently hold an {@link EmbeddedPostgresSharedServerLease} on the shared server. A naive "close
- * as soon as the count reaches zero" policy would be wrong here: this server is meant to be reused
- * indefinitely across many, non-overlapping test contexts over the JVM's whole lifetime (that is
- * the entire point of {@code shared} mode), and the count legitimately drops to zero between one
- * context's close and the next context's first use. The count is instead consulted only once, by
- * {@link #closeAfterOutstandingLeasesDrain}, when this class's own JVM shutdown hook actually fires
- * at JVM exit -- see that method's Javadoc for why waiting on it there is what prevents the
- * shutdown-hook race this class used to have.
+ * currently hold a lease on the shared server. A naive "close as soon as the count reaches zero"
+ * policy would be wrong here: the server is meant to be reused indefinitely across many,
+ * non-overlapping test contexts over the JVM's whole lifetime -- that is the entire point of
+ * {@code shared} mode -- and the count legitimately drops to zero between one context's close and
+ * the next context's first use. The count is instead consulted only once, by {@link
+ * #closeAfterOutstandingLeasesDrain}, when this class's own JVM shutdown hook fires at JVM exit;
+ * see that method's Javadoc for why waiting on it there prevents a shutdown-hook race.
  */
 final class EmbeddedPostgresSupport {
 

@@ -10,19 +10,18 @@ import org.springframework.core.env.Environment;
  * mock service mappings, merging the classpath-wide defaults discovered by {@link
  * FlowableTestHttpStubEnvironmentPostProcessor} ({@code flowable.test.http-mocks.discovered}) with
  * any per-test-class {@code @MockExternalService} overrides applied by {@link
- * MockExternalServiceContextCustomizer} ({@code flowable.test.http-mocks.overridden}) -- override
+ * MockExternalServiceContextCustomizer} ({@code flowable.test.http-mocks.overridden}); an override
  * wins per service name.
  *
  * <p>Both the {@code httpMockServers} bean and the release listener in {@link
  * FlowableTestHttpStubAutoConfiguration} must resolve the exact same map for a given context, so
- * this is the single shared place that computation happens -- resolving it independently in two
- * places would risk the two call sites drifting (e.g. one seeing an override property the other
- * missed because it read the environment at a different point in the context lifecycle).
+ * this is the single shared place that computation happens rather than being duplicated at each
+ * call site.
  *
  * <p>{@link #encode(Map)} is the single shared counterpart used by both writers of these properties
  * ({@link FlowableTestHttpStubEnvironmentPostProcessor} and {@link
  * MockExternalServiceContextCustomizer}), so the {@code "name=location,name2=location2"} wire
- * format is only ever produced and parsed in this one place.
+ * format is produced and parsed in only this one place.
  */
 final class HttpMockServiceRegistry {
 

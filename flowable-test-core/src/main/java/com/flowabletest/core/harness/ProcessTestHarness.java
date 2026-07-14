@@ -23,12 +23,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Generic BPMN process-testing primitives, extracted from the task-completion / wait-state polling
- * boilerplate that otherwise gets duplicated in every Flowable test class. Every method operates on
- * process instance IDs, activity IDs, and candidate group names -- never a domain-specific concept.
+ * Generic BPMN process-testing primitives -- task completion, event-driven wait-state polling, and
+ * dead-letter fail-fast checks -- extracted from the boilerplate that otherwise gets duplicated in
+ * every Flowable test class. Every method operates on process instance IDs, activity IDs, and
+ * candidate group names, never a domain-specific concept.
  *
- * <p>{@code diagnosticsCollector} may be {@code null} (diagnostics disabled via {@code
- * flowable.test.diagnostics.enabled=false}), in which case failures from this class are unenriched.
+ * <p>{@link #assertThat(String)} hands off to {@link ProcessInstanceAssert} for state assertions.
+ * {@link #awaitEnded}, {@link #awaitTaskForCandidateGroup}, and {@link #awaitCallActivityChild} all
+ * wait on the engine's own events instead of a fixed polling interval, and fail fast -- well before
+ * the caller's timeout -- the moment a dead-letter job appears on the process instance, since an
+ * async delegate that throws does not fail the awaiting test directly. Every failure raised by this
+ * class is enriched with a {@link ProcessDiagnosticsAttachment} built via {@link
+ * ProcessDiagnosticsCollector}, unless {@code diagnosticsCollector} is {@code null} (diagnostics
+ * disabled via {@code flowable.test.diagnostics.enabled=false}), in which case failures are
+ * unenriched.
  */
 public final class ProcessTestHarness {
 

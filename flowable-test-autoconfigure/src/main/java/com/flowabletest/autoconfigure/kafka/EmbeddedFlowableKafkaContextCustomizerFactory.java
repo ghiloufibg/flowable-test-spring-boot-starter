@@ -8,10 +8,9 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
 
 /**
- * Registered via {@code META-INF/spring.factories} under {@code
- * org.springframework.test.context.ContextCustomizerFactory} -- see {@link
- * EmbeddedFlowableKafkaContextCustomizer} for why this SPI, not an {@code
- * EnvironmentPostProcessor}, is what applies {@link EmbeddedFlowableKafka}.
+ * {@link ContextCustomizerFactory} that activates {@link EmbeddedFlowableKafkaContextCustomizer}
+ * for test classes annotated with {@link EmbeddedFlowableKafka}. Registered via {@code
+ * META-INF/spring.factories} under {@link ContextCustomizerFactory}.
  */
 public final class EmbeddedFlowableKafkaContextCustomizerFactory
     implements ContextCustomizerFactory {

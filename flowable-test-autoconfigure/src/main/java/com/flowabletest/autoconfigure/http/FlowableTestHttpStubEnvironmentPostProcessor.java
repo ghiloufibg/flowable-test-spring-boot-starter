@@ -18,21 +18,22 @@ import org.springframework.util.ClassUtils;
 /**
  * Starts one in-process WireMock server per service discovered via the default folder convention
  * and injects {@code <service-name>.base-url} into the {@code Environment} before the {@code
- * ApplicationContext} refreshes -- same timing rationale as the Kafka post-processor: a consumer's
- * {@code @ConfigurationProperties}-bound HTTP client may resolve that property while itself being
- * created during context refresh, so it must already be present.
+ * ApplicationContext} refreshes. This has to happen at the {@code EnvironmentPostProcessor} stage,
+ * not in a regular bean, because a consumer's {@code @ConfigurationProperties}-bound HTTP client
+ * may resolve that property while itself being created during context refresh.
  *
  * <p>This only handles the zero-code default path: scanning {@code
- * classpath:httpmocks/<name>/mappings/*.json}. Per-test-class {@code @MockExternalService}
- * overrides are handled separately by {@link MockExternalServiceContextCustomizer} -- see its
- * Javadoc for why that requires a different Spring TestContext extension point than this class.
+ * classpath:httpmocks/<name>/mappings/*.json} via {@link HttpMockDiscovery}. Per-test-class {@code
+ * @MockExternalService} overrides are handled separately by {@link
+ * MockExternalServiceContextCustomizer}, which needs the Spring TestContext framework rather than
+ * this environment-processing extension point because it must see the JUnit test class.
  *
  * <p>{@code flowable.test.http-mocks.services} (optional, opt-in) replaces the scan with an
- * explicit, declared list of service names. Absent (the default), behavior is unchanged: every
- * immediate subfolder under {@code root} is discovered and started, exactly as the plain scan
- * always has. Declared, it becomes the sole source of which services start here; folders on the
- * classpath that aren't declared are left alone, and a declared name with no matching {@code
- * mappings} folder fails fast, right here, before the {@code ApplicationContext} starts refreshing.
+ * explicit, declared list of service names. Absent, every immediate subfolder under {@code root} is
+ * discovered and started, exactly as the plain scan always has. Declared, it becomes the sole
+ * source of which services start here: folders on the classpath that aren't declared are left
+ * alone, and a declared name with no matching {@code mappings} folder fails fast, before the {@code
+ * ApplicationContext} starts refreshing.
  */
 public final class FlowableTestHttpStubEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {

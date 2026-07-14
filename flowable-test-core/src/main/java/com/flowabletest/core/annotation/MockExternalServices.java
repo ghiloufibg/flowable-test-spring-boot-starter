@@ -7,7 +7,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Container for repeated {@link MockExternalService} annotations. Not meant to be used directly.
+ * Container annotation holding multiple {@link MockExternalService} occurrences, generated
+ * implicitly through {@code @Repeatable}. Test authors should apply {@link MockExternalService}
+ * directly and never reference this container.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

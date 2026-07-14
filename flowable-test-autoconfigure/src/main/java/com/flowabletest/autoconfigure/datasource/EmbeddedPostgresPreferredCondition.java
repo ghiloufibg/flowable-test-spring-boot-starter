@@ -9,21 +9,21 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
 /**
- * Decides whether the embedded-Postgres {@code DataSource} beans in {@link
- * FlowableTestDatasourceAutoConfiguration} should activate, based on {@code
- * flowable.test.datasource.provider}: {@code embedded-postgres} forces it on, {@code h2} forces it
- * off even if {@code io.zonky.test:embedded-postgres} happens to be on the classpath, and the
- * default {@code auto} prefers it whenever it's present. This condition only runs once the bean
- * method's own {@code @ConditionalOnClass(EmbeddedPostgres.class)} has already confirmed the
- * library is present, so {@code auto} returning {@code true} here is exactly "use it because it's
- * there".
+ * Reads {@code flowable.test.datasource.provider} to decide whether the embedded-Postgres {@code
+ * DataSource} beans in {@link FlowableTestDatasourceAutoConfiguration} activate: {@code
+ * embedded-postgres} forces them on, {@code h2} forces them off even if {@code
+ * io.zonky.test:embedded-postgres} is on the classpath, and the default {@code auto} prefers
+ * Postgres whenever it's present. This condition only runs once the bean method's own {@code
+ * @ConditionalOnClass(EmbeddedPostgres.class)} has already confirmed the library is present, so
+ * {@code auto} matching here means exactly "use it because it's there". Any other property value
+ * throws {@link IllegalStateException}.
  *
- * <p>That auto-preference is a real footgun in a module that pulls in {@code embedded-postgres} for
- * only one test class: every other {@code @FlowableProcessTest} in the module silently flips from
- * H2 to Postgres too, the moment the dependency lands on the test classpath -- with no property
- * change and often a confusing downstream failure (e.g. a hardcoded H2 Hibernate dialect producing
- * DDL Postgres rejects) rather than an obvious "wrong datasource" error. The one-time warning below
- * exists specifically to surface that silent flip.
+ * <p>That auto-preference silently flips every {@code @FlowableProcessTest} in the module from H2
+ * to Postgres the moment {@code embedded-postgres} lands on the test classpath for unrelated
+ * reasons (e.g. a single other test class needing it), with no property change and often a
+ * confusing downstream failure rather than an obvious "wrong datasource" error. {@link #matches}
+ * logs a one-time warning, guarded by {@link #AUTO_SELECTION_WARNED}, specifically to surface that
+ * silent flip.
  */
 final class EmbeddedPostgresPreferredCondition implements Condition {
 

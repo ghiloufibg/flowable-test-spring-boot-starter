@@ -13,36 +13,33 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Embedded DB, Docker-free.
+ * Provisions a Docker-free embedded test {@code DataSource}: H2 by default, or embedded Postgres
+ * when {@code io.zonky.test:embedded-postgres} is on the classpath and selected.
  *
  * <p>H2 is the fallback -- Spring Boot's own {@code DataSourceAutoConfiguration} wires an embedded
  * H2 {@code DataSource} automatically whenever H2 is on the test classpath and no explicit {@code
- * spring.datasource.url} is configured. This class additionally auto-detects {@code
- * io.zonky.test:embedded-postgres} on the classpath and, when present, replaces H2 with a
- * Docker-free embedded Postgres instance -- a direct, Docker-free replacement for a Testcontainers
- * {@code PostgreSQLContainer}, for projects whose delegates rely on Postgres-specific SQL (JSON
- * columns, arrays) that H2's dialect emulation can't cover.
+ * spring.datasource.url} is configured. The nested {@code EmbeddedPostgresDataSourceConfiguration}
+ * additionally activates on {@code @ConditionalOnClass(EmbeddedPostgres.class)} and, when selected,
+ * replaces H2 with a Docker-free embedded Postgres instance -- for projects whose delegates rely on
+ * Postgres-specific SQL (JSON columns, arrays) that H2's dialect emulation can't cover.
  *
- * <p>{@code flowable.test.datasource.provider} controls the choice: {@code auto} (the default)
- * prefers embedded Postgres whenever it's on the classpath, {@code h2} always forces H2 even if
- * embedded Postgres is present, and {@code embedded-postgres} always requires it. See {@link
- * EmbeddedPostgresPreferredCondition}.
+ * <p>{@code flowable.test.datasource.provider} controls the choice ({@code auto}, the default,
+ * prefers embedded Postgres whenever it's on the classpath; {@code h2} always forces H2; {@code
+ * embedded-postgres} always requires it -- see {@link EmbeddedPostgresPreferredCondition}), and
+ * {@code flowable.test.datasource.embedded-postgres.instance-scope} controls how the Postgres
+ * provider allocates its server process ({@code per-context}, the default, forks a fresh native
+ * process per Spring context; {@code shared} starts at most one process per JVM via {@link
+ * EmbeddedPostgresSupport} and provisions a fresh logical database per context -- see {@link
+ * EmbeddedPostgresInstanceScopeCondition}).
  *
  * <p>This class runs {@link AutoConfigureBefore before} Spring Boot's own {@code
  * DataSourceAutoConfiguration} so that its {@code @ConditionalOnMissingBean(DataSource.class)}
- * correctly backs off once the embedded-Postgres {@code DataSource} bean below has already been
- * registered.
+ * correctly backs off once one of the {@code DataSource} beans here has already been registered.
  *
  * <p>Note: this does not override {@code spring.jpa.properties.hibernate.dialect}. If the
  * consumer's test profile hardcodes an H2 dialect, switching providers means removing that override
  * too (Hibernate 6 auto-detects the dialect from the JDBC connection when none is explicitly
  * configured).
- *
- * <p>{@code flowable.test.datasource.embedded-postgres.instance-scope} additionally controls *how*
- * the embedded-postgres provider allocates its server process: {@code per-context} (the default)
- * forks a fresh native process for every Spring context, exactly as below; {@code shared} starts at
- * most one process per JVM via {@link EmbeddedPostgresSupport} and provisions a fresh logical
- * database per context on top of it. See {@link EmbeddedPostgresInstanceScopeCondition}.
  */
 @AutoConfiguration
 @AutoConfigureBefore(DataSourceAutoConfiguration.class)

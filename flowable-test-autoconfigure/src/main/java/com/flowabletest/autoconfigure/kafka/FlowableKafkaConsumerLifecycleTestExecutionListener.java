@@ -10,30 +10,27 @@ import org.springframework.test.context.TestExecutionListener;
 import org.springframework.util.ClassUtils;
 
 /**
- * Starts/stops Flowable's inbound Kafka Event Registry consumer container(s) at Spring test class
- * boundaries, active only when {@code flowable.test.kafka.broker-scope=shared} (the default; see
- * {@link FlowableKafkaBrokerScopeCondition}).
+ * Starts and stops Flowable's inbound Kafka Event Registry consumer container(s) at Spring test
+ * class boundaries, active only when {@code flowable.test.kafka.broker-scope=shared} (the
+ * default; see {@link FlowableKafkaBrokerScopeCondition}).
  *
- * <p>The shared broker is a JVM-wide singleton; Spring's {@code TestContextCache} keeps every
- * distinct {@code ApplicationContext} it builds resident for the rest of the JVM's life, so without
- * this listener two cached contexts' engines would both register as competing consumers, in the
- * same hardcoded consumer group, against the same broker. Stopping the previous class's containers
- * before the next class's run begins prevents that; {@link #beforeTestClass} idempotently restarts
- * them if the very next class reuses this same cached context.
+ * <p>The shared broker is a JVM-wide singleton, and Spring's {@code TestContextCache} keeps every
+ * distinct {@code ApplicationContext} it builds resident for the rest of the JVM's life. Without
+ * this listener, two cached contexts' engines would both register as competing consumers -- in
+ * the same hardcoded consumer group -- against the same broker. Stopping the previous class's
+ * containers before the next class's run begins prevents that; {@link #beforeTestClass}
+ * idempotently restarts them if the next class reuses this same cached context.
  *
- * <p>Registered via {@code META-INF/spring.factories} under {@code
- * org.springframework.test.context.TestExecutionListener}, which means it is unconditionally
- * instantiated for <b>every</b> test using the Spring TestContext framework, including consumers of
- * this starter with no Kafka on their classpath at all. {@link #isSharedModeWithKafkaOnClasspath}
- * guards {@link #beforeTestClass}/{@link #afterTestClass} against that -- deliberately kept free of
- * any Kafka/Flowable-Kafka type reference itself, and checked <b>before</b> either override creates
- * a lambda referencing {@link MessageListenerContainer}, since lambda creation ({@code
- * invokedynamic}) resolves its target type the first time that bytecode executes regardless of
- * which branch calls it. Same classpath-guard discipline already used by {@link
- * FlowableTestKafkaEnvironmentPostProcessor}.
+ * <p>Registered via {@code META-INF/spring.factories} under {@link TestExecutionListener}, so it
+ * is unconditionally instantiated for every test using the Spring TestContext framework, including
+ * consumers of this starter with no Kafka on their classpath at all. {@link
+ * #isSharedModeWithKafkaOnClasspath} guards both lifecycle callbacks against that case, and is
+ * checked before either callback builds a lambda referencing {@link MessageListenerContainer}: the
+ * {@code invokedynamic} bytecode behind lambda creation resolves its target type the first time it
+ * executes, regardless of which branch calls it, so the classpath guard must run first.
  *
- * <p>Only acts on containers registered by Flowable itself (matched via {@link
- * KafkaChannelDefinitionProcessor#CHANNEL_ID_PREFIX}), never on the {@link
+ * <p>Only acts on containers registered by Flowable itself, matched via {@link
+ * KafkaChannelDefinitionProcessor#CHANNEL_ID_PREFIX}, never on the {@link
  * KafkaListenerEndpointRegistry} as a whole -- that registry is a single bean shared with any
  * unrelated {@code @KafkaListener}s the consumer app might separately declare.
  */

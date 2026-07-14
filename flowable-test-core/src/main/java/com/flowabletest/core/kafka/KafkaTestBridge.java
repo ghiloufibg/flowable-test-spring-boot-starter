@@ -18,10 +18,10 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 /**
- * Generic replacement for the raw {@code KafkaProducer}/{@code KafkaConsumer} setup that otherwise
- * gets hand-rolled in every Flowable + Kafka Event Registry test class (see the {@code
- * publishPaymentCallback}/{@code consumeMessagesContaining} pattern this design is extracted from).
- * Operates purely on topic/key/value strings -- no payload schema knowledge.
+ * Publishes to and awaits messages on Kafka topics using a {@link KafkaProducer}/{@link
+ * KafkaConsumer} pair, replacing the raw producer/consumer setup that otherwise gets hand-rolled in
+ * every Flowable + Kafka Event Registry test class. Operates purely on topic/key/value strings, with
+ * no payload schema knowledge.
  *
  * <p>Registered as a bean by {@code FlowableTestKafkaAutoConfiguration}, pointed at whichever
  * embedded broker is active for the test.

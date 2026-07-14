@@ -3,10 +3,11 @@ package com.flowabletest.autoconfigure.kafka;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
- * A per-context handle on the JVM-wide shared embedded Kafka broker, returned by {@link
+ * Per-context handle on the JVM-wide shared embedded Kafka broker, obtained from {@link
  * EmbeddedFlowableKafkaSupport#acquireLease()}. {@link #release()} is registered as this bean's
- * Spring {@code destroyMethod} in {@link FlowableTestKafkaAutoConfiguration}; see {@link
- * EmbeddedFlowableKafkaSupport}'s Javadoc for what this guards against.
+ * Spring {@code destroyMethod} in {@link FlowableTestKafkaAutoConfiguration}, so the lease is
+ * released when the owning context closes; see {@link EmbeddedFlowableKafkaSupport} for what this
+ * protects against.
  */
 final class EmbeddedKafkaSharedBrokerLease {
 

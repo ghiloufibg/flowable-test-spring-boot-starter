@@ -4,12 +4,12 @@ import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 
 /**
  * A per-context handle on the JVM-wide shared embedded Postgres server, returned by {@link
- * EmbeddedPostgresSupport#acquireLease()}. {@link #release()} is registered as this bean's Spring
- * {@code destroyMethod} in {@link FlowableTestDatasourceAutoConfiguration}; see {@link
- * EmbeddedPostgresSupport}'s Javadoc for why this bean's destroy-order placement -- after its own
- * context's Flowable engine beans, via a real dependency edge on the {@code DataSource} bean rather
- * than just fortunate timing -- is what actually prevents the shared server's shutdown hook from
- * closing it while those engine beans are still mid-shutdown.
+ * EmbeddedPostgresSupport#acquireLease()}. Registered as a {@code @Bean(destroyMethod = "release")}
+ * in {@link FlowableTestDatasourceAutoConfiguration}, with the shared {@code DataSource} bean
+ * depending on it so that Spring destroys this lease only after its own context's Flowable engine
+ * beans have finished shutting down -- see {@link EmbeddedPostgresSupport} for why that ordering is
+ * what prevents the shared server's shutdown hook from closing the server while those engine beans
+ * are still mid-shutdown.
  */
 final class EmbeddedPostgresSharedServerLease {
 

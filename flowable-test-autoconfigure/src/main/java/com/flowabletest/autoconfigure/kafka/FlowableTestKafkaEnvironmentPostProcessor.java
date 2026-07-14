@@ -14,12 +14,11 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Starts the embedded Kafka broker and injects {@code spring.kafka.bootstrap-servers} into the
- * {@code Environment} <b>before</b> the {@code ApplicationContext} refreshes -- this has to happen
- * at the {@code EnvironmentPostProcessor} stage, not in a regular {@code @Bean}, because Spring
- * Kafka's own auto-configured producer/consumer factories (and Flowable's Kafka Event Registry
- * channels) read {@code spring.kafka.bootstrap-servers} while *they* are being created, and
- * bean-creation order relative to a same-context {@code @Bean} method is not guaranteed to put ours
- * first.
+ * {@link ConfigurableEnvironment} before the {@code ApplicationContext} refreshes. This has to
+ * happen at the {@code EnvironmentPostProcessor} stage, not in a regular {@code @Bean}, because
+ * Spring Kafka's auto-configured producer/consumer factories and Flowable's Kafka Event Registry
+ * channels read {@code spring.kafka.bootstrap-servers} while they themselves are being created,
+ * and same-context {@code @Bean} ordering cannot guarantee this class runs first.
  *
  * <p>Ordered to run last ({@link Ordered#LOWEST_PRECEDENCE}) among environment post-processors, so
  * that {@code ConfigDataEnvironmentPostProcessor} has already loaded {@code application.yml}/{@code

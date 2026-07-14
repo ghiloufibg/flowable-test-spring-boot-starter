@@ -12,17 +12,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.env.Environment;
 
 /**
- * Layer 1 (default allow-list) of the process-deployment mechanism: deploys whatever {@link
+ * Deploys the default set of BPMN processes that {@link
  * FlowableTestProcessDeploymentEnvironmentPostProcessor} resolved from {@code
- * flowable.test.processes.deploy}, once {@code RepositoryService} exists. A {@code
- * SmartInitializingSingleton} runs automatically as part of context refresh, with no test-framework
- * dependency at all -- mirroring how Flowable's own classpath auto-deployment also runs as part of
- * context refresh rather than as a JUnit hook, since this is a drop-in replacement for that
- * mechanism.
+ * flowable.test.processes.deploy}, once a {@code ProcessEngine} bean exists and {@code
+ * RuntimeService} is on the classpath.
  *
- * <p>A no-op when {@code flowable.test.processes.deploy} was absent -- {@link
- * ProcessDeploymentRegistry#resolve} then returns an empty map, and this bean does nothing further,
- * leaving Flowable's own classpath scan (left enabled in that case) as the sole deployer.
+ * <p>{@link #defaultProcessDeployer} returns a {@link SmartInitializingSingleton}, which runs
+ * automatically as part of context refresh with no test-framework dependency at all -- mirroring
+ * how Flowable's own classpath auto-deployment also runs as part of context refresh rather than as
+ * a JUnit hook, since this is a drop-in replacement for that mechanism.
+ *
+ * <p>A no-op when {@code flowable.test.processes.deploy} was absent: {@link
+ * ProcessDeploymentRegistry#resolve} then returns an empty map, and the deployer does nothing
+ * further, leaving Flowable's own classpath scan (left enabled in that case) as the sole deployer.
  */
 @AutoConfiguration(
     afterName = {

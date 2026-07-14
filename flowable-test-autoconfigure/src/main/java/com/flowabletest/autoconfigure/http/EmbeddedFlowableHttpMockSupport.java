@@ -12,35 +12,32 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * Starts (at most once per name+location combination, per JVM) the in-process WireMock servers
- * discovered by {@link FlowableTestHttpStubEnvironmentPostProcessor}, and tracks how many Spring
- * {@code ApplicationContext}s currently reference each one so a server can be stopped and its port
- * freed once the last referencing context closes, instead of living for the whole JVM. Same
- * rationale as {@code EmbeddedFlowableKafkaSupport}: this has to run before an {@code
- * ApplicationContext} exists, so it can't be a Spring bean itself.
+ * Starts and refcounts the in-process {@link WireMockServer} instances discovered by {@link
+ * FlowableTestHttpStubEnvironmentPostProcessor}, stopping and freeing each server's port once the
+ * last referencing {@code ApplicationContext} closes rather than leaving it running for the whole
+ * JVM. Runs before any {@code ApplicationContext} exists, so it cannot itself be a Spring bean;
+ * both the environment post-processor and {@link MockExternalServiceContextCustomizer} call into
+ * this holder directly.
  *
- * <p>Keyed by {@code name + "|" + classpathLocation} rather than name alone, so a test overriding a
- * service's stub folder via {@code @MockExternalService(stubs = ...)} gets its own server rather
- * than reusing one already loaded with different mappings.
+ * <p>Servers are keyed by {@code name + "|" + classpathLocation} rather than by name alone, so a
+ * test overriding a service's stub folder via {@code @MockExternalService(stubs = ...)} gets its
+ * own server instead of reusing one already loaded with different mappings.
  *
- * <p>{@link #ensureStarted(String, String)} only guarantees a server is running -- it has no
- * refcount side effect, since at the point both the environment post-processor and the context
- * customizer call it (pre-refresh, during context preparation), it isn't yet known whether a
- * default-folder start will be superseded by a later {@code @MockExternalService} override in the
- * same context. Only {@link #retain(String, String)}, called once per context for that context's
- * final override-applied service map, increments the refcount; {@link #release(String, String)}
- * (called from a {@code ContextClosedEvent} listener for that same map) decrements it and stops the
- * server at zero. All three methods, plus server creation, run under a single lock: contention is
- * irrelevant here since these only fire at context start/close, and a single lock rules out the
- * class of race where a concurrent {@code retain} could observe a server this thread is in the
- * middle of stopping.
+ * <p>{@link #ensureStarted(String, String)} only guarantees a server is running and has no refcount
+ * side effect: at the point it is called (pre-refresh, during context preparation) it is not yet
+ * known whether a default-folder start will be superseded by a later {@code @MockExternalService}
+ * override in the same context. Only {@link #retain(String, String)}, called once per context for
+ * that context's final override-applied service map, increments the refcount; {@link
+ * #release(String, String)}, invoked from a {@code ContextClosedEvent} listener for that same map,
+ * decrements it and stops the server at zero. All three methods, plus server creation, run under a
+ * single lock, which is safe here because these calls only happen at context start/close, and it
+ * rules out a concurrent {@code retain} observing a server this thread is in the middle of
+ * stopping.
  *
- * <p>One residual case is intentionally not refcounted: a default-convention folder that every
- * referencing context always overrides (via {@code @MockExternalService(stubs = ...)}) is {@code
- * ensureStarted} but never {@code retain}ed by anyone, so it is never released mid-run -- it falls
- * back to living until the JVM shutdown hook every started server already gets. This is unavoidable
- * without a size-cap or TTL-based eviction (an explicit non-goal): nothing can prove "no context
- * will ever plainly use this default" while the suite is still running.
+ * <p>One case is intentionally never refcounted: a default-convention folder that every
+ * referencing context always overrides via {@code @MockExternalService(stubs = ...)} is started
+ * but never retained, so it is never released mid-run and instead lives until the JVM shutdown
+ * hook that every started server registers.
  */
 final class EmbeddedFlowableHttpMockSupport {
 

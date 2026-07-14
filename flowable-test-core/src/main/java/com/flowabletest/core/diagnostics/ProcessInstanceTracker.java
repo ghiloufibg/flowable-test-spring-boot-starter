@@ -9,17 +9,19 @@ import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 
 /**
- * Records every process instance ID started since the last {@link #reset()}, so test-failure
- * diagnostics can be scoped to exactly the process instances the failing test touched -- correct
- * even when the underlying engine/database is shared across test classes, where a global "list all
- * process instances at failure time" query would sweep up unrelated instances from other tests.
- * Stops tracking new IDs once {@code maxTrackedProcessInstances} is reached, so a test that starts
- * an unusually large number of instances can't turn a single failure into an unbounded number of
- * diagnostics queries; {@link #omittedProcessInstanceCount()} reports how many were left out.
+ * A {@link FlowableEventListener} that records every process instance ID started since the last
+ * {@link #reset()}, so test-failure diagnostics can be scoped to exactly the process instances the
+ * failing test touched -- correct even when the underlying engine and database are shared across
+ * test classes, where a global "list every process instance at failure time" query would sweep up
+ * unrelated instances from other tests. Stops tracking new IDs once {@code
+ * maxTrackedProcessInstances} is reached, so a test that starts an unusually large number of
+ * instances can't turn a single failure into an unbounded number of diagnostics queries; {@link
+ * #omittedProcessInstanceCount()} reports how many were left out.
  *
  * <p>Registered on the Flowable engine's event dispatcher for {@code PROCESS_STARTED} only, so
  * {@link #onEvent} may run on a job-executor thread (async continuations, call activities) rather
- * than the test thread -- the backing set is synchronized accordingly.
+ * than the test thread -- the backing set is synchronized accordingly. Reset before each test and
+ * consulted on failure by {@link FlowableProcessDiagnosticsExtension}.
  */
 public final class ProcessInstanceTracker implements FlowableEventListener {
 

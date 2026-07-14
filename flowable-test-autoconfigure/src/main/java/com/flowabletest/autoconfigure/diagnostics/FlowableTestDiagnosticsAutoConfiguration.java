@@ -1,5 +1,6 @@
 package com.flowabletest.autoconfigure.diagnostics;
 
+import com.flowabletest.core.diagnostics.FlowableProcessDiagnosticsExtension;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
 import java.util.List;
@@ -20,17 +21,16 @@ import org.springframework.context.annotation.Bean;
  * Registers the BPMN test-failure diagnostics capability: a {@link ProcessInstanceTracker}
  * subscribed to the engine's {@code PROCESS_STARTED} events, and a {@link
  * ProcessDiagnosticsCollector} that turns a process instance ID into a full snapshot (current
- * activity, variables, activity trail, pending tasks, dead-letter job failures). {@link
- * com.flowabletest.core.diagnostics.FlowableProcessDiagnosticsExtension} (wired into
- * {@code @FlowableProcessTest} directly) resolves both beans defensively via {@code
- * getIfAvailable()}, so disabling this auto-configuration (or a context-refresh failure before it
- * runs) simply means test failures go unenriched -- exactly as before this capability existed.
+ * activity, variables, activity trail, pending tasks, dead-letter job failures).
  *
- * <p>Always active once a {@code ProcessEngine} exists, like {@code
- * FlowableTestAssertionsAutoConfiguration} -- no optional third-party dependency to gate on -- but
- * unlike that one, this capability can be switched off wholesale via {@code
- * flowable.test.diagnostics.enabled=false} for consumers who have their own failure-reporting
- * tooling and consider this noise.
+ * <p>Activates once a {@code ProcessEngine} bean exists, unless {@code
+ * flowable.test.diagnostics.enabled} is set to {@code false} -- for consumers who have their own
+ * failure-reporting tooling and consider this noise. Both beans back off individually via {@code
+ * @ConditionalOnMissingBean} if the consumer already defines one. {@link
+ * FlowableProcessDiagnosticsExtension}, wired into {@code @FlowableProcessTest} directly, resolves
+ * both beans defensively via {@code getIfAvailable()}, so disabling this auto-configuration (or a
+ * context-refresh failure before it runs) simply means test failures go unenriched -- exactly as
+ * before this capability existed.
  *
  * <p>Two properties bound here exist specifically so this capability holds up under real, not just
  * toy, usage: {@code flowable.test.diagnostics.redacted-variable-names} (default covers common

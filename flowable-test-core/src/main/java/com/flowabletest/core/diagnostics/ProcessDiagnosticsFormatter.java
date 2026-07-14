@@ -4,7 +4,10 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityTrailE
 import java.time.Duration;
 import java.util.List;
 
-/** Renders {@link ProcessDiagnosticsReport}s into a human-readable plain-text block. */
+/**
+ * Renders {@link ProcessDiagnosticsReport}s into a human-readable plain-text block, for wrapping in
+ * a {@link ProcessDiagnosticsAttachment} on a failed test's exception.
+ */
 public final class ProcessDiagnosticsFormatter {
 
   private ProcessDiagnosticsFormatter() {}

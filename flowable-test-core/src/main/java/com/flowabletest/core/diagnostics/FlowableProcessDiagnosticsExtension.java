@@ -11,16 +11,16 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 /**
- * JUnit 5 safety net for BPMN diagnostics: resets the {@link ProcessInstanceTracker} before each
- * test, and on any test failure -- assertion or arbitrary exception, not just failures raised by
- * this starter's own assertions/harness -- attaches a diagnostics snapshot of every process
- * instance the test touched as a suppressed exception on the original failure.
+ * JUnit 5 extension that resets {@link ProcessInstanceTracker} state before each test and, when a
+ * test fails, attaches a {@link ProcessDiagnosticsCollector} snapshot of every process instance the
+ * test touched to the failure as a suppressed {@link ProcessDiagnosticsAttachment}. Triggers on any
+ * thrown failure, not just failures raised by this starter's own assertions or harness.
  *
- * <p>Wired automatically via {@code @FlowableProcessTest}; a consumer never adds this explicitly.
- * Bean lookups are defensive throughout ({@code getIfAvailable}, never a hard bean lookup) so a
- * disabled {@code flowable.test.diagnostics.enabled=false}, or a context-refresh failure before
- * beans exist, degrades to a silent no-op. Diagnostics collection is never allowed to replace or
- * mask the original test failure.
+ * <p>Wired automatically by {@code @FlowableProcessTest}; a consumer never registers this extension
+ * directly. Both beans are looked up defensively ({@code getIfAvailable()}, never a hard lookup), so
+ * a disabled {@code flowable.test.diagnostics.enabled=false}, or no Spring context yet, degrades to
+ * a silent no-op. A failure while collecting diagnostics is logged and swallowed, never allowed to
+ * replace or mask the original test failure.
  */
 public final class FlowableProcessDiagnosticsExtension implements BeforeEachCallback, TestWatcher {
 

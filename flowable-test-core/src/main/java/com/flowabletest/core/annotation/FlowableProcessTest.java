@@ -12,14 +12,15 @@ import org.springframework.core.annotation.AliasFor;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
- * One-annotation replacement for the {@code @SpringBootTest @ActiveProfiles("test")} stack a
- * Flowable BPMN test normally hand-assembles. Spring's annotation metadata resolution finds the
- * meta-annotations transitively (the same mechanism {@code @DataJpaTest} etc. rely on), so this
- * needs no extra bootstrapping machinery.
+ * Meta-annotation for a Flowable BPMN process test, composing {@code @SpringBootTest}, {@code
+ * @ActiveProfiles("test")}, and {@link FlowableProcessDiagnosticsExtension} so a test class does
+ * not have to assemble that stack by hand. Spring resolves meta-annotations transitively (the same
+ * mechanism {@code @DataJpaTest} and similar test slices rely on), so no extra bootstrapping is
+ * required.
  *
  * <p>Whichever of the starter's optional capabilities are on the consumer's classpath (embedded
- * Kafka, HTTP stubbing) activate automatically via their own auto-configuration -- this annotation
- * does not need to know which ones are present.
+ * Kafka, HTTP stubbing) activate through their own auto-configuration; this annotation does not
+ * need to know which ones are present.
  */
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)

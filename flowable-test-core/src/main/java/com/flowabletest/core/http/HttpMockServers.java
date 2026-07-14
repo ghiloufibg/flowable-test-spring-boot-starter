@@ -4,11 +4,12 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.Map;
 
 /**
- * Deliberately a dedicated type rather than a bare {@code Map<String, WireMockServer>} bean:
- * Spring's {@code @Autowired} resolution treats an injection point of generic type {@code
- * Map<String, X>} as "collect every bean of type X, keyed by bean name" rather than "find the one
- * bean whose own type happens to be that Map" -- so a directly-exposed Map bean is never found by
- * consumers autowiring that generic type. Wrapping it sidesteps that Spring behavior entirely.
+ * Wraps the {@link WireMockServer} instances started for each discovered service, keyed by service
+ * name, as a single injectable bean. A dedicated record rather than a bare {@code Map<String,
+ * WireMockServer>} bean, because Spring's {@code @Autowired} resolution treats an injection point of
+ * generic type {@code Map<String, X>} as "collect every bean of type X, keyed by bean name" rather
+ * than "find the one bean whose own type happens to be that Map" -- so a directly-exposed Map bean
+ * would never be found by a consumer autowiring that generic type.
  */
 public record HttpMockServers(Map<String, WireMockServer> servers) {
 

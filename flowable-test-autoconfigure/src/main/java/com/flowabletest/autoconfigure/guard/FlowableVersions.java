@@ -1,6 +1,12 @@
 package com.flowabletest.autoconfigure.guard;
 
-/** Minimal major.minor.patch version comparison, deliberately dependency-free. */
+/**
+ * Minimal major.minor.patch version range check, deliberately dependency-free rather than pulling
+ * in a full version-parsing library for this one comparison. {@link #isSupported} strips any
+ * pre-release/build suffix (e.g. {@code "-SNAPSHOT"}) before comparing, and treats a missing or
+ * non-numeric segment as {@code 0}. Used by {@link FlowableCompatibilityGuardAutoConfiguration} to
+ * validate the consumer's runtime Flowable engine version.
+ */
 final class FlowableVersions {
 
   private static final int VERSION_SEGMENTS = 3;

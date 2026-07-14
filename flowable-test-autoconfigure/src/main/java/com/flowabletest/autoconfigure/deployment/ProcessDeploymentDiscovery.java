@@ -9,10 +9,12 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 /**
  * Resolves an explicitly declared list of process names against the {@code root/<name>.bpmn20.xml}
  * convention -- the one-file-per-process convention already used throughout this starter and its
- * example app. Unlike the HTTP-mock discovery this mirrors, there is no classpath-scan default
- * here: {@code flowable.test.processes.deploy} absent means Flowable's own {@code
- * checkProcessDefinitions} scan handles deployment exactly as it does today, so this class only
- * ever runs once a consumer has explicitly declared names.
+ * example app. Invoked by {@link FlowableTestProcessDeploymentEnvironmentPostProcessor}.
+ *
+ * <p>Unlike the HTTP-mock discovery this mirrors, there is no classpath-scan default here: {@code
+ * flowable.test.processes.deploy} absent means Flowable's own {@code checkProcessDefinitions} scan
+ * handles deployment exactly as it does today, so this class only ever runs once a consumer has
+ * explicitly declared names.
  */
 public final class ProcessDeploymentDiscovery {
 

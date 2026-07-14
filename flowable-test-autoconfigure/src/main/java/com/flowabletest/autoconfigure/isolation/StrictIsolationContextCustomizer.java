@@ -10,29 +10,19 @@ import org.springframework.test.context.MergedContextConfiguration;
 import org.springframework.util.ClassUtils;
 
 /**
- * Forces {@code isolation = SEPARATE_CONTEXT} classes to never share a cached {@code
- * ApplicationContext} with any other test class -- including another {@code SEPARATE_CONTEXT}
- * class. A record's {@code equals}/{@code hashCode} are derived from every component, so two
- * instances are equal only when {@code testClassName} matches; since this customizer is keyed by
- * the declaring class's own (always-unique) name, no other class's cache key can ever match it,
- * which forces Spring to build a brand-new context every time this class runs. Same technique
- * {@code @DirtiesContext} uses internally, but scoped to poisoning only this class's own cache key
- * rather than also forcing a rebuild for whatever runs after it.
+ * {@link ContextCustomizer} that forces a {@code SEPARATE_CONTEXT}-isolated test class to never
+ * share a cached {@code ApplicationContext} with any other test class. As a record, its {@code
+ * equals}/{@code hashCode} are derived from {@link #testClassName}, which is always unique per
+ * test class, so Spring's {@code TestContextCache} key never matches an existing entry and a
+ * brand-new context is built every time.
  *
- * <p>{@code customizeContext} additionally guarantees this brand-new context also gets a genuinely
- * separate <em>database</em>, not just a separate {@code ProcessEngine}: the embedded-postgres
- * provider already isolates for free (a real native process or logical database per context), but
- * H2 does not -- left alone, H2 is entirely Spring Boot's own {@code DataSourceAutoConfiguration}
- * default, so a consumer who pins a fixed {@code spring.datasource.url} (a common pattern, e.g.
- * {@code jdbc:h2:mem:testdb}) would otherwise get two distinct engines that still share the exact
- * same physical database for the JVM's lifetime. This unconditionally overrides {@code
- * spring.datasource.url} with a fresh, uniquely-named in-memory URL whenever H2 is the active
- * provider -- winning even over the consumer's own configuration, the same way this starter's
- * process-deployment allow-list already wins over {@code flowable.check-process-definitions} --
- * because "separate context" that still shares a database isn't actually separate. Runs after this
- * starter's {@code EnvironmentPostProcessor}s (so {@code flowable.test.datasource.provider} is
- * already resolved) and before the context refreshes (so {@code DataSourceAutoConfiguration} still
- * sees the override).
+ * <p>{@link #customizeContext} additionally guarantees the new context gets a genuinely separate
+ * <em>database</em>, not just a separate {@code ProcessEngine}: the embedded-postgres provider
+ * already isolates per context, but H2 does not, so a fixed {@code spring.datasource.url} (e.g.
+ * {@code jdbc:h2:mem:testdb}) would otherwise let two "isolated" contexts share the same physical
+ * database for the JVM's lifetime. Whenever H2 is the active provider, this unconditionally
+ * overrides {@code spring.datasource.url} with a freshly generated, uniquely named in-memory URL
+ * before the context refreshes.
  */
 record StrictIsolationContextCustomizer(String testClassName) implements ContextCustomizer {
 

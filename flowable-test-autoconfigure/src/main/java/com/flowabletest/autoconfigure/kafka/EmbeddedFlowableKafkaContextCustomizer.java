@@ -13,22 +13,18 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 
 /**
- * Applies {@link EmbeddedFlowableKafka#additionalTopics()} (and, only if the broker hasn't started
- * yet, {@link EmbeddedFlowableKafka#partitions()}) for one test class -- the annotation's
- * fine-tuning escape hatch. Deliberately a {@link ContextCustomizer} rather than logic inside
- * {@link FlowableTestKafkaEnvironmentPostProcessor}: an {@code EnvironmentPostProcessor} has no
- * visibility into the JUnit test class (only the primary {@code @SpringBootTest(classes=...)}
- * source) -- same rationale as {@code MockExternalServiceContextCustomizer}.
+ * {@link ContextCustomizer} that applies {@link EmbeddedFlowableKafka#additionalTopics()} and
+ * {@link EmbeddedFlowableKafka#partitions()} for one test class. A {@link ContextCustomizer} is
+ * used rather than folding this into {@link FlowableTestKafkaEnvironmentPostProcessor} because an
+ * {@code EnvironmentPostProcessor} has no visibility into the JUnit test class itself.
  *
- * <p>The embedded broker is a JVM-wide singleton ({@link EmbeddedFlowableKafkaSupport}, started at
- * most once per JVM). If the environment post-processor (or an earlier test class in the same JVM)
- * already started it, {@link EmbeddedFlowableKafka#partitions()} can't retroactively change the
- * broker's own startup partition count -- so it's applied per-topic to this annotation's own {@code
- * additionalTopics()} instead, via the broker's {@code addTopics(NewTopic...)}, which works against
- * an already-running broker. If nothing has started the broker yet (no Event Registry channels on
- * the classpath), this customizer starts it itself using {@code additionalTopics()} as the initial
- * topic set and {@code partitions()} as the broker's partition count, injecting {@code
- * spring.kafka.bootstrap-servers} the same way the environment post-processor would have.
+ * <p>The embedded broker ({@link EmbeddedFlowableKafkaSupport}) is started at most once per JVM.
+ * If it is already running -- started by the post-processor or an earlier test class -- {@code
+ * partitions()} can no longer change the broker's own startup partition count, so only the
+ * missing {@code additionalTopics()} are added to the running broker. If nothing has started the
+ * broker yet, this customizer starts it itself using {@code additionalTopics()} as the initial
+ * topic set and {@code partitions()} as the broker's partition count, then injects {@code
+ * spring.kafka.bootstrap-servers} the same way the post-processor would have.
  */
 record EmbeddedFlowableKafkaContextCustomizer(EmbeddedFlowableKafka annotation)
     implements ContextCustomizer {
