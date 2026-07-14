@@ -68,13 +68,22 @@ public class FlowableTestDatasourceAutoConfiguration {
   @ConditionalOnClass(EmbeddedPostgres.class)
   static class EmbeddedPostgresDataSourceConfiguration {
 
+    /**
+     * {@code setRegisterShutdownHook(false)}: {@code EmbeddedPostgres} otherwise always registers
+     * its own JVM shutdown hook to close the native process (zonkyio/embedded-postgres#64, #87),
+     * independent of and racing this bean's own {@code destroyMethod = "close"} at test-JVM
+     * shutdown -- if that hook wins the race, the native process is already dead by the time
+     * Flowable's engine beans (which depend on this one and are destroyed first) try to open a JDBC
+     * connection during their own {@code destroy()}. Disabling it leaves Spring's own
+     * destroy-method call, which correctly runs after those dependents, as the sole owner.
+     */
     @Bean(destroyMethod = "close")
     @Conditional({
       EmbeddedPostgresPreferredCondition.class,
       EmbeddedPostgresInstanceScopeCondition.PerContext.class
     })
     EmbeddedPostgres embeddedPostgres() throws IOException {
-      return EmbeddedPostgres.builder().start();
+      return EmbeddedPostgres.builder().setRegisterShutdownHook(false).start();
     }
 
     @Bean
@@ -87,15 +96,39 @@ public class FlowableTestDatasourceAutoConfiguration {
       return embeddedPostgres.getPostgresDatabase();
     }
 
+    /**
+     * {@code destroyMethod = "release"}: registers this context's claim on the JVM-wide shared
+     * server so its shutdown hook knows to wait for this context before closing it. Guarded by the
+     * same {@code @ConditionalOnMissingBean(DataSource.class)} as the {@code DataSource} bean below
+     * so a lease is never acquired (and the server never lazily started) when a consumer-supplied
+     * {@code DataSource} means neither bean is actually needed.
+     */
+    @Bean(destroyMethod = "release")
+    @Conditional({
+      EmbeddedPostgresPreferredCondition.class,
+      EmbeddedPostgresInstanceScopeCondition.Shared.class
+    })
+    @ConditionalOnMissingBean(DataSource.class)
+    EmbeddedPostgresSharedServerLease embeddedPostgresSharedServerLease() {
+      return EmbeddedPostgresSupport.acquireLease();
+    }
+
+    /**
+     * Takes the lease bean above as a parameter purely to establish a real Spring dependency edge
+     * -- this method never uses {@code lease} beyond reaching the server it wraps -- so Spring
+     * destroys the lease only after this context's Flowable engine beans, which depend on this
+     * {@code DataSource} bean transitively, have already finished their own shutdown. See {@link
+     * EmbeddedPostgresSupport}'s Javadoc for why that ordering, not just reference counting, is
+     * what actually prevents the shared server's shutdown-hook race.
+     */
     @Bean(destroyMethod = "")
     @Conditional({
       EmbeddedPostgresPreferredCondition.class,
       EmbeddedPostgresInstanceScopeCondition.Shared.class
     })
     @ConditionalOnMissingBean(DataSource.class)
-    DataSource embeddedPostgresSharedDataSource() {
-      final EmbeddedPostgres server = EmbeddedPostgresSupport.sharedServer();
-      return EmbeddedPostgresSupport.freshDatabase(server);
+    DataSource embeddedPostgresSharedDataSource(EmbeddedPostgresSharedServerLease lease) {
+      return EmbeddedPostgresSupport.freshDatabase(lease.server());
     }
   }
 }

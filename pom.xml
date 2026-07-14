@@ -46,7 +46,7 @@
 
         <spring-boot.version>3.3.5</spring-boot.version>
         <wiremock.version>3.9.1</wiremock.version>
-        <embedded-postgres.version>2.0.7</embedded-postgres.version>
+        <embedded-postgres.version>2.2.2</embedded-postgres.version>
         <assertj.version>3.26.3</assertj.version>
 
         <spotless.version>2.44.5</spotless.version>
@@ -100,6 +100,16 @@
                 <groupId>io.zonky.test</groupId>
                 <artifactId>embedded-postgres</artifactId>
                 <version>${embedded-postgres.version}</version>
+            </dependency>
+
+            <!-- Spring Boot 3.3.5's own BOM pins commons-lang3 to 3.14.0, which predates
+                 SystemProperties.getUserName(String); embedded-postgres 2.2.2 calls that method
+                 and fails with NoSuchMethodError at runtime under the BOM-managed version. Pinned
+                 here to exactly what embedded-postgres 2.2.2 itself depends on. -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.20.0</version>
             </dependency>
 
             <dependency>
