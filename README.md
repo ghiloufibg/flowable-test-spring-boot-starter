@@ -8,7 +8,8 @@ process tests in CI environments where Docker isn't available.
 
 This is a library, not an application tied to any one BPMN process — every public API operates on
 process instance IDs, activity IDs, candidate group names, and plain classpath conventions. See
-[`flowable-bpmn-masterclass`](../flowable-bpmn-masterclass) for a reference consumer.
+[`flowable-test-example`](flowable-test-example) for a reference consumer, owned by this repo, that
+depends on this starter exactly like an external project would.
 
 ## Modules
 
@@ -17,6 +18,7 @@ process instance IDs, activity IDs, candidate group names, and plain classpath c
 | `flowable-test-core` | Annotations, `ProcessTestHarness`, `KafkaTestBridge`, HTTP stub types. No auto-configuration. |
 | `flowable-test-autoconfigure` | `@AutoConfiguration` classes, `EnvironmentPostProcessor`s, `ContextCustomizerFactory`. Has its own internal test suite (test-scope only) validating every capability against a real, pinned Flowable engine. |
 | `flowable-test-spring-boot-starter` | The artifact you actually depend on — a thin aggregator of the two above. |
+| `flowable-test-example` | A real Spring Boot + Flowable + Kafka Event Registry order-processing app depending on `flowable-test-spring-boot-starter` (test scope) like any external consumer. Not part of the release artifacts — validates the starter end to end. |
 
 ## Getting started
 
@@ -222,7 +224,10 @@ requires `EnvironmentPostProcessor`/`ContextCustomizerFactory` rather than plain
 
 ## Status
 
-Freshly scaffolded, untested against a real consumer project. Every capability has passing
-internal validation tests (`flowable-test-autoconfigure`'s own test suite, run against a real
-pinned Flowable 7.1.0 engine) but the starter has not yet been exercised against
-`flowable-bpmn-masterclass`'s actual `OrderProcessScenariosTest` migration.
+Every capability has passing validation tests, both internal (`flowable-test-autoconfigure`'s own
+suite, run against a real pinned Flowable 7.1.0 engine) and end-to-end (`flowable-test-example`, a
+real Spring Boot + Flowable + Kafka Event Registry order-processing app that depends on this
+starter exactly like an external consumer would — see its own README for what it proves). Both
+suites run on every push via CI's `mvn clean test`, across the full supported Flowable range
+(7.0.0 and 7.1.0), so the starter is validated end to end without relying on any external consumer
+project.

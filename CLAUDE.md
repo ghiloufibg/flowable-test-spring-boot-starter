@@ -24,8 +24,9 @@ Build from the repo root (Maven multi-module reactor):
 mvn clean install
 ```
 
-Run all tests (only `flowable-test-autoconfigure` has a test suite; it runs against a real, pinned
-Flowable 7.1.0 engine declared as a `test`-scope dependency):
+Run all tests (`flowable-test-autoconfigure` and `flowable-test-example` each have their own test
+suite; both run against a real, pinned Flowable 7.1.0 engine declared as a `test`-scope
+dependency):
 
 ```
 mvn test
@@ -53,13 +54,15 @@ Java 21 is required (`maven.compiler.release=21` in the parent POM).
 
 ## Module architecture
 
-Three-module Maven reactor mirroring Spring Boot's starter/autoconfigure split:
+Four-module Maven reactor mirroring Spring Boot's starter/autoconfigure split, plus one
+self-validation consumer:
 
 | Module | Role |
 |---|---|
 | `flowable-test-core` | Annotations (`@FlowableProcessTest`, `@MockExternalService`, `@EmbeddedFlowableKafka`), `ProcessTestHarness`, `ProcessInstanceAssert`, `KafkaTestBridge`, `HttpStubConfigurer` SPI. **No Spring Boot auto-configuration** — that's deliberately kept out of this module. |
-| `flowable-test-autoconfigure` | One `@AutoConfiguration` class per capability, each `@ConditionalOnClass`-gated so a consumer only activates what's on their classpath. Also owns the `EnvironmentPostProcessor`s and `ContextCustomizerFactory`. **This is the only module with a test suite** — it validates every capability end-to-end against a real Flowable engine. |
+| `flowable-test-autoconfigure` | One `@AutoConfiguration` class per capability, each `@ConditionalOnClass`-gated so a consumer only activates what's on their classpath. Also owns the `EnvironmentPostProcessor`s and `ContextCustomizerFactory`. Has its own test suite validating every capability in isolation against a real Flowable engine. |
 | `flowable-test-starter` | Empty-POM aggregator. The only artifact consumers actually declare a dependency on; pulls in the two modules above and nothing else. |
+| `flowable-test-example` | A real Spring Boot + Flowable + Kafka Event Registry order-processing app that depends on `flowable-test-spring-boot-starter` in `test` scope exactly like an external consumer would. Not part of the release artifacts — it exists solely to validate the starter end to end (real `send-event` service tasks, an event-registry-correlated start event, real WireMock-mocked HTTP delegates, embedded-postgres/H2 auto-detection) against a genuine domain, closing the gap `flowable-test-autoconfigure`'s own suite can't: that suite only proves channel-file scanning and raw Kafka bridging in isolation, never a deployed BPMN process driving real Kafka traffic through the engine itself. The dependency direction is one-way — nothing in `flowable-test-core`/`-autoconfigure`/`-starter` may depend back on it. It runs inside the same reactor-wide `mvn test` CI already executes, so it's automated on every push with no separate external consumer project required. |
 
 ### Auto-configuration classes (`flowable-test-autoconfigure`)
 
@@ -141,9 +144,10 @@ stub definitions, it doesn't belong in this starter.
 
 ## Status
 
-Freshly scaffolded — every capability has a passing internal validation test in
-`flowable-test-autoconfigure`, but the starter has not yet been exercised against a real external
-consumer project.
+Every capability has a passing internal validation test in `flowable-test-autoconfigure`, and the
+starter has also been exercised end to end against `flowable-test-example`, a real Flowable +
+Kafka Event Registry consumer app owned by this repo (see "Module architecture" above). Both test
+suites run in CI on every push, across the full supported Flowable range.
 
 ## 🎯 Code Quality Standards
 
