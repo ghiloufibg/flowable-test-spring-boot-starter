@@ -1,5 +1,8 @@
 package com.flowabletest.core.assertions;
 
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsAttachment;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsFormatter;
 import org.assertj.core.api.AbstractAssert;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
@@ -12,17 +15,29 @@ import org.flowable.engine.RuntimeService;
  * <p>Constructed via {@link com.flowabletest.core.harness.ProcessTestHarness#assertThat(String)}
  * rather than a bare static factory, since evaluating these assertions requires the consumer's own
  * {@code RuntimeService}/{@code HistoryService} beans.
+ *
+ * <p>Every failure message is enriched with a BPMN diagnostics snapshot (current activity,
+ * variables, activity trail, pending tasks, dead-letter job failures) of exactly this process
+ * instance, since the failing assertion already knows precisely which one is relevant -- see {@code
+ * claudedocs/bpmn-failure-diagnostics-design.md}. {@code diagnosticsCollector} may be {@code null}
+ * (diagnostics disabled via {@code flowable.test.diagnostics.enabled=false}), in which case failure
+ * messages are unenriched, exactly as before this capability existed.
  */
 public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceAssert, String> {
 
   private final RuntimeService runtimeService;
   private final HistoryService historyService;
+  private final ProcessDiagnosticsCollector diagnosticsCollector;
 
   public ProcessInstanceAssert(
-      String processInstanceId, RuntimeService runtimeService, HistoryService historyService) {
+      String processInstanceId,
+      RuntimeService runtimeService,
+      HistoryService historyService,
+      ProcessDiagnosticsCollector diagnosticsCollector) {
     super(processInstanceId, ProcessInstanceAssert.class);
     this.runtimeService = runtimeService;
     this.historyService = historyService;
+    this.diagnosticsCollector = diagnosticsCollector;
   }
 
   /**
@@ -35,7 +50,7 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
     final long active =
         runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
     if (active != 0) {
-      failWithMessage(
+      failWithDiagnostics(
           "Expected process instance <%s> to have ended, but it is still active", actual);
     }
 
@@ -47,7 +62,7 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
             .list()
             .isEmpty();
     if (!reachedActivity) {
-      failWithMessage(
+      failWithDiagnostics(
           "Expected process instance <%s> to have reached end activity <%s>, but it did not",
           actual, activityId);
     }
@@ -60,7 +75,7 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
     final long active =
         runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
     if (active == 0) {
-      failWithMessage(
+      failWithDiagnostics(
           "Expected process instance <%s> to still be active, but it has ended", actual);
     }
     return this;
@@ -78,10 +93,29 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
             .taskCandidateGroup(candidateGroup)
             .count();
     if (historicTasks != 0) {
-      failWithMessage(
+      failWithDiagnostics(
           "Expected process instance <%s> to have no task for candidate group <%s>, but found %d",
           actual, candidateGroup, historicTasks);
     }
     return this;
+  }
+
+  /**
+   * Same contract as {@link #failWithMessage(String, Object...)} (always throws), but attaches a
+   * BPMN diagnostics snapshot of this process instance as a suppressed exception first. Diagnostics
+   * text is never interpolated into the format string itself -- a variable value containing a
+   * literal {@code %} would otherwise corrupt {@code String.format} evaluation.
+   */
+  private void failWithDiagnostics(String errorMessage, Object... arguments) {
+    try {
+      failWithMessage(errorMessage, arguments);
+    } catch (final AssertionError failure) {
+      if (diagnosticsCollector != null) {
+        failure.addSuppressed(
+            new ProcessDiagnosticsAttachment(
+                ProcessDiagnosticsFormatter.format(diagnosticsCollector.collect(actual))));
+      }
+      throw failure;
+    }
   }
 }

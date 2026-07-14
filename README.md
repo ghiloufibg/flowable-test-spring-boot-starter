@@ -170,6 +170,30 @@ every Flowable test class: `completeSingleTask`, `awaitTaskForCandidateGroup`, `
 `awaitCallActivityChild`, and a `ProcessInstanceAssert` (`hasEndedAt`, `isActive`,
 `hasNoTaskForCandidateGroup`).
 
+### BPMN failure diagnostics
+
+Every `@FlowableProcessTest` failure -- whether raised by `ProcessInstanceAssert`/
+`ProcessTestHarness` or by arbitrary test/delegate code -- is automatically enriched with a BPMN
+diagnostics snapshot: current activity, process variables, activity trail, pending tasks, and
+dead-letter job failures (the exception behind an async service task that silently got parked as a
+retryable job, rather than failing the test directly). It's attached as a suppressed exception on
+the original failure, so it shows up wherever the stack trace already does -- IDE, console,
+Surefire reports -- with no reporting plugin to configure.
+
+On by default; disable it, or tune its limits, via:
+
+```yaml
+flowable:
+  test:
+    diagnostics:
+      enabled: true                      # default true
+      max-activity-trail-entries: 20     # default 20
+      max-variable-value-length: 500     # default 500
+      include-failed-jobs: true          # default true
+```
+
+See `claudedocs/bpmn-failure-diagnostics-design.md` for the full rationale.
+
 ## Flowable version compatibility
 
 | Starter version | Supported Flowable range |

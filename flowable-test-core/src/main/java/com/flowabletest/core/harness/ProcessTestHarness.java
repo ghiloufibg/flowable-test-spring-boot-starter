@@ -1,6 +1,9 @@
 package com.flowabletest.core.harness;
 
 import com.flowabletest.core.assertions.ProcessInstanceAssert;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsAttachment;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsFormatter;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -17,6 +20,11 @@ import org.flowable.task.api.Task;
  * boilerplate that otherwise gets duplicated in every Flowable test class. Every method operates on
  * process instance IDs, activity IDs, and candidate group names -- never a domain-specific concept
  * (design doc section 4.4).
+ *
+ * <p>{@code diagnosticsCollector} may be {@code null} (diagnostics disabled via {@code
+ * flowable.test.diagnostics.enabled=false}), in which case failures from this class are unenriched,
+ * exactly as before that capability existed -- see {@code
+ * claudedocs/bpmn-failure-diagnostics-design.md}.
  */
 public final class ProcessTestHarness {
 
@@ -25,16 +33,22 @@ public final class ProcessTestHarness {
   private final RuntimeService runtimeService;
   private final TaskService taskService;
   private final HistoryService historyService;
+  private final ProcessDiagnosticsCollector diagnosticsCollector;
 
   public ProcessTestHarness(
-      RuntimeService runtimeService, TaskService taskService, HistoryService historyService) {
+      RuntimeService runtimeService,
+      TaskService taskService,
+      HistoryService historyService,
+      ProcessDiagnosticsCollector diagnosticsCollector) {
     this.runtimeService = runtimeService;
     this.taskService = taskService;
     this.historyService = historyService;
+    this.diagnosticsCollector = diagnosticsCollector;
   }
 
   public ProcessInstanceAssert assertThat(String processInstanceId) {
-    return new ProcessInstanceAssert(processInstanceId, runtimeService, historyService);
+    return new ProcessInstanceAssert(
+        processInstanceId, runtimeService, historyService, diagnosticsCollector);
   }
 
   /**
@@ -49,13 +63,15 @@ public final class ProcessTestHarness {
             .taskCandidateGroup(candidateGroup)
             .list();
     if (tasks.size() != 1) {
-      throw new IllegalStateException(
-          "Expected exactly one task with candidate group '"
-              + candidateGroup
-              + "' for process instance "
-              + processInstanceId
-              + " but found "
-              + tasks.size());
+      throw withDiagnostics(
+          new IllegalStateException(
+              "Expected exactly one task with candidate group '"
+                  + candidateGroup
+                  + "' for process instance "
+                  + processInstanceId
+                  + " but found "
+                  + tasks.size()),
+          processInstanceId);
     }
     return tasks.get(0);
   }
@@ -87,7 +103,8 @@ public final class ProcessTestHarness {
                     .processInstanceId(processInstanceId)
                     .singleResult()
                 : null,
-        "process instance <" + processInstanceId + "> to end");
+        "process instance <" + processInstanceId + "> to end",
+        processInstanceId);
   }
 
   /**
@@ -111,7 +128,8 @@ public final class ProcessTestHarness {
             + candidateGroup
             + "> on process instance <"
             + processInstanceId
-            + ">");
+            + ">",
+        processInstanceId);
   }
 
   /**
@@ -133,10 +151,15 @@ public final class ProcessTestHarness {
             + childProcessDefinitionKey
             + "> under parent <"
             + parentProcessInstanceId
-            + ">");
+            + ">",
+        parentProcessInstanceId);
   }
 
-  private <T> T poll(Duration timeout, Supplier<T> attempt, String description) {
+  private <T> T poll(
+      Duration timeout,
+      Supplier<T> attempt,
+      String description,
+      String diagnosticsProcessInstanceId) {
     final Instant deadline = Instant.now().plus(timeout);
     while (true) {
       final T result = attempt.get();
@@ -144,10 +167,27 @@ public final class ProcessTestHarness {
         return result;
       }
       if (Instant.now().isAfter(deadline)) {
-        throw new AssertionError("Timed out after " + timeout + " waiting for " + description);
+        throw withDiagnostics(
+            new AssertionError("Timed out after " + timeout + " waiting for " + description),
+            diagnosticsProcessInstanceId);
       }
       sleep(DEFAULT_POLL_INTERVAL);
     }
+  }
+
+  /**
+   * Attaches a BPMN diagnostics snapshot of {@code processInstanceId} to {@code failure} as a
+   * suppressed exception, then returns it for the caller to throw. A no-op (returns {@code failure}
+   * unchanged) when diagnostics are disabled ({@code diagnosticsCollector} is {@code null}) -- see
+   * {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+   */
+  private <T extends Throwable> T withDiagnostics(T failure, String processInstanceId) {
+    if (diagnosticsCollector != null) {
+      failure.addSuppressed(
+          new ProcessDiagnosticsAttachment(
+              ProcessDiagnosticsFormatter.format(diagnosticsCollector.collect(processInstanceId))));
+    }
+    return failure;
   }
 
   private static void sleep(Duration duration) {

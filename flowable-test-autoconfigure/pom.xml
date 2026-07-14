@@ -105,6 +105,15 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Runs a real, isolated JUnit 5 test class programmatically so
+             FlowableProcessDiagnosticsExtensionTest can prove the extension actually attaches
+             diagnostics on failure, without that inner fixture class ever running (or failing) as
+             part of this module's own real Surefire build. -->
+        <dependency>
+            <groupId>org.junit.platform</groupId>
+            <artifactId>junit-platform-testkit</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

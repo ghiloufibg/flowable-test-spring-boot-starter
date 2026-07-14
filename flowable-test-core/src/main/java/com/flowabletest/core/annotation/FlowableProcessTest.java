@@ -1,10 +1,12 @@
 package com.flowabletest.core.annotation;
 
+import com.flowabletest.core.diagnostics.FlowableProcessDiagnosticsExtension;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.test.context.ActiveProfiles;
@@ -24,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 @Documented
 @SpringBootTest
 @ActiveProfiles("test")
+@ExtendWith(FlowableProcessDiagnosticsExtension.class)
 public @interface FlowableProcessTest {
 
   @AliasFor(annotation = ActiveProfiles.class, attribute = "profiles")

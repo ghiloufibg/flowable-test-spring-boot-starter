@@ -43,6 +43,27 @@
             <artifactId>assertj-core</artifactId>
         </dependency>
 
+        <!-- Needed to compile FlowableProcessDiagnosticsExtension (@ExtendWith target, referenced
+             directly from the main-scope @FlowableProcessTest annotation). provided, not test,
+             scope: same reasoning as flowable-engine above, the consumer's own
+             spring-boot-starter-test always supplies the actual JUnit 5 runtime, so this must never
+             become a transitive runtime dependency of its own. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SLF4J API: used by FlowableProcessDiagnosticsExtension to log (never throw) when
+             diagnostics collection itself fails. provided, not compile: Flowable itself requires
+             slf4j-api at runtime, so the consumer always has a binding on their classpath already;
+             this must not become a second, independently-versioned copy. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Optional: only needed by KafkaTestBridge. Not propagated to consumers (design doc
              section 3/4.2); a consumer must add spring-kafka-test themselves to use this. -->
         <dependency>
@@ -58,11 +79,9 @@
             <optional>true</optional>
         </dependency>
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-api</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!-- junit-jupiter-api itself is now provided-scope above (available on both compile and
+             test classpaths); only the engine, needed purely to execute this module's own tests
+             via Surefire and never referenced by any source, stays test-scope. -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
