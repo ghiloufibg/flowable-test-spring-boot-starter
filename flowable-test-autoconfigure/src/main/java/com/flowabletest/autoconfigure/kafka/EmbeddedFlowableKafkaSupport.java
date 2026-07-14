@@ -11,8 +11,7 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
  * exposes the started instance as a regular bean afterwards, once the context is available, purely
  * so consumers can {@code @Autowired EmbeddedKafkaBroker} if they need direct access.
  *
- * <p>Two independent start paths, selected by {@link FlowableKafkaBrokerScopeCondition} (design
- * doc: {@code claudedocs/kafka-shared-broker-context-isolation-design.md}): {@link
+ * <p>Two independent start paths, selected by {@link FlowableKafkaBrokerScopeCondition}: {@link
  * #startIfNeeded(Set, int)} starts at most one JVM-wide singleton broker ({@code shared}, the
  * default); {@link #startFresh(Set, int)} starts a brand-new broker every call ({@code
  * per-context}). {@link #currentPerContext()} hands the most recently {@link #startFresh started}

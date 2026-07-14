@@ -26,10 +26,9 @@ import org.flowable.variable.api.history.HistoricVariableInstance;
 /**
  * Turns a process instance ID into a full diagnostics snapshot -- current activity, variables,
  * activity trail, pending tasks, and dead-letter job failures -- for attaching to test-failure
- * output. See {@code claudedocs/bpmn-failure-diagnostics-design.md} for the full rationale,
- * including why dead-letter jobs specifically are the highest-value field here: an async service
- * task that throws does not fail the test directly, it gets silently parked as a dead-letter job
- * while the test thread just sees an unrelated timeout.
+ * output. Dead-letter jobs are the highest-value field here: an async service task that throws does
+ * not fail the test directly, it gets silently parked as a dead-letter job while the test thread
+ * just sees an unrelated timeout.
  */
 public final class ProcessDiagnosticsCollector {
 

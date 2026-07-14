@@ -8,8 +8,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 /**
  * Decides whether the embedded Kafka broker exposed by {@link FlowableTestKafkaAutoConfiguration}
  * is a JVM-wide singleton shared across every Spring context ({@code shared}, the default) or a
- * fresh broker started per Spring context ({@code per-context}) -- see {@code
- * claudedocs/kafka-shared-broker-context-isolation-design.md}. Same shape as {@code
+ * fresh broker started per Spring context ({@code per-context}). Same shape as {@code
  * EmbeddedPostgresInstanceScopeCondition}: a small helper plus two trivial {@link Condition}
  * implementations, so the two bean methods stay mutually exclusive {@code @Conditional} gates
  * rather than one method branching internally. {@link #isShared(Environment)} is also called

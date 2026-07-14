@@ -11,8 +11,8 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 
 /**
- * Redirects specific services to an alternate stub folder for one test class (design doc section
- * 4.3's escape hatch). Deliberately a {@link ContextCustomizer} rather than logic inside {@link
+ * Redirects specific services to an alternate stub folder for one test class -- an escape hatch for
+ * per-test overrides. Deliberately a {@link ContextCustomizer} rather than logic inside {@link
  * FlowableTestHttpStubEnvironmentPostProcessor}: an {@code EnvironmentPostProcessor} has no
  * visibility into the JUnit test class (only the primary {@code @SpringBootTest(classes=...)}
  * source), and even if it did, {@code @MockExternalService} isn't one of the annotation types

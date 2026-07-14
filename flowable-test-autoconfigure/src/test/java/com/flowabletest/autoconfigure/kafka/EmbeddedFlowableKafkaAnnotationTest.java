@@ -15,7 +15,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 /**
  * Proves {@link EmbeddedFlowableKafka#additionalTopics()} actually adds a usable topic to the
  * embedded broker, on top of whatever the Event Registry channel scan already discovered -- the
- * annotation's own escape-hatch use case (design doc section 4.2), applied via {@link
+ * annotation's own escape-hatch use case, applied via {@link
  * EmbeddedFlowableKafkaContextCustomizer} rather than the environment post-processor, which has no
  * visibility into this test class's annotations.
  */

@@ -26,9 +26,9 @@ import org.springframework.util.ClassUtils;
  * application-test.yml} and any consumer overrides of {@code flowable.test.kafka.*} are visible
  * when this class reads them.
  *
- * <p>{@code flowable.test.kafka.broker-scope} controls which broker gets started (design: {@code
- * claudedocs/kafka-shared-broker-context-isolation-design.md}): {@code shared} (the default) reuses
- * the JVM-wide singleton, {@code per-context} starts a brand-new broker for this context alone. See
+ * <p>{@code flowable.test.kafka.broker-scope} controls which broker gets started: {@code shared}
+ * (the default) reuses the JVM-wide singleton, {@code per-context} starts a brand-new broker for
+ * this context alone. See
  * {@link FlowableKafkaBrokerScopeCondition}.
  */
 public final class FlowableTestKafkaEnvironmentPostProcessor

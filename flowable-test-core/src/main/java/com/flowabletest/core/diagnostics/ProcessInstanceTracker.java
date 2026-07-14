@@ -11,9 +11,8 @@ import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 /**
  * Records every process instance ID started since the last {@link #reset()}, so test-failure
  * diagnostics can be scoped to exactly the process instances the failing test touched -- correct
- * even when the underlying engine/database is shared across test classes (see {@code
- * claudedocs/bpmn-failure-diagnostics-design.md} for why a global "list all process instances at
- * failure time" query would be wrong under this starter's shared-DB test modes).
+ * even when the underlying engine/database is shared across test classes, where a global "list all
+ * process instances at failure time" query would sweep up unrelated instances from other tests.
  *
  * <p>Registered on the Flowable engine's event dispatcher for {@code PROCESS_STARTED} only, so
  * {@link #onEvent} may run on a job-executor thread (async continuations, call activities) rather

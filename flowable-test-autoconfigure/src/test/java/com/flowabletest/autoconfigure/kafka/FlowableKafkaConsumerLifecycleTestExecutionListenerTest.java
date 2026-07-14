@@ -14,8 +14,7 @@ import org.springframework.test.context.TestContextManager;
 
 /**
  * Proves {@link FlowableKafkaConsumerLifecycleTestExecutionListener}'s {@code shared}-mode start/
- * stop choreography (design doc: {@code
- * claudedocs/kafka-shared-broker-context-isolation-design.md}): the inbound {@code
+ * stop choreography: the inbound {@code
  * paymentCallbackChannel} consumer container is running after {@code beforeTestClass}, stopped
  * after {@code afterTestClass}, and idempotently restarted by a subsequent {@code beforeTestClass}
  * -- exactly the sequence Spring's {@code TestContextCache} produces across two real test classes

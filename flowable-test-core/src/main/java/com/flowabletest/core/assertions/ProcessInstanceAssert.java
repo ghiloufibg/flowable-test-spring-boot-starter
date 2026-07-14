@@ -9,8 +9,7 @@ import org.flowable.engine.RuntimeService;
 
 /**
  * AssertJ-style assertions over a process instance ID. Deliberately domain-blind: every method
- * takes plain activity IDs / candidate group names as arguments, never a masterclass-specific
- * concept (design doc section 4.4).
+ * takes plain activity IDs / candidate group names as arguments, never a project-specific concept.
  *
  * <p>Constructed via {@link com.flowabletest.core.harness.ProcessTestHarness#assertThat(String)}
  * rather than a bare static factory, since evaluating these assertions requires the consumer's own
@@ -18,10 +17,9 @@ import org.flowable.engine.RuntimeService;
  *
  * <p>Every failure message is enriched with a BPMN diagnostics snapshot (current activity,
  * variables, activity trail, pending tasks, dead-letter job failures) of exactly this process
- * instance, since the failing assertion already knows precisely which one is relevant -- see {@code
- * claudedocs/bpmn-failure-diagnostics-design.md}. {@code diagnosticsCollector} may be {@code null}
- * (diagnostics disabled via {@code flowable.test.diagnostics.enabled=false}), in which case failure
- * messages are unenriched, exactly as before this capability existed.
+ * instance, since the failing assertion already knows precisely which one is relevant. {@code
+ * diagnosticsCollector} may be {@code null} (diagnostics disabled via {@code
+ * flowable.test.diagnostics.enabled=false}), in which case failure messages are unenriched.
  */
 public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceAssert, String> {
 

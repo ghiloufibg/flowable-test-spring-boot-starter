@@ -15,8 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
  * Proves {@link ProcessInstanceTracker} is actually wired onto the engine's event dispatcher (real
  * {@code PROCESS_STARTED} events reach it, in start order, including for concurrently-started
  * instances) and that {@link ProcessInstanceTracker#reset()} clears it -- the mechanism {@code
- * FlowableProcessDiagnosticsExtension} relies on to scope diagnostics to exactly one test method
- * (design doc {@code claudedocs/bpmn-failure-diagnostics-design.md}).
+ * FlowableProcessDiagnosticsExtension} relies on to scope diagnostics to exactly one test method.
  */
 @FlowableProcessTest(classes = SampleFlowableApplication.class)
 class ProcessInstanceTrackerTest {

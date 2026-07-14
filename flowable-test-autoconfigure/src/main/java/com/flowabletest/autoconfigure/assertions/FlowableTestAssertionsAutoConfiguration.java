@@ -16,13 +16,13 @@ import org.springframework.context.annotation.Bean;
 /**
  * Registers {@link ProcessTestHarness} around the consumer's own Flowable engine beans. Always
  * active once a {@code ProcessEngine} exists -- unlike Kafka/HTTP mocking, this capability has no
- * optional third-party dependency to gate on (design doc section 4.4/4.5).
+ * optional third-party dependency to gate on.
  *
  * <p>{@code afterName} additionally includes {@code FlowableTestDiagnosticsAutoConfiguration} so
  * that, when diagnostics is enabled, its {@code ProcessDiagnosticsCollector} bean is already
  * defined by the time this configuration processes -- resolved defensively via {@link
  * ObjectProvider#getIfAvailable()}, so this class works identically whether or not diagnostics is
- * enabled (design doc: {@code claudedocs/bpmn-failure-diagnostics-design.md}).
+ * enabled.
  */
 @AutoConfiguration(
     afterName = {

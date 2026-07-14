@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 
 /**
- * Proves the whole declarative HTTP-mocking capability end to end (design doc section 4.3): a plain
+ * Proves the whole declarative HTTP-mocking capability end to end: a plain
  * WireMock mapping JSON file under {@code src/test/resources/httpmocks/demo-service/mappings/} is
  * auto-discovered, a WireMock server is started for it before context refresh, and {@code
  * demo-service.base-url} is injected -- with no annotation and no Java stub-building code anywhere

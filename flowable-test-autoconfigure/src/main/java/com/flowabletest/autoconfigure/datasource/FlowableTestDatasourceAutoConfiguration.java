@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 
 /**
- * Embedded DB, Docker-free (design doc section 4.1).
+ * Embedded DB, Docker-free.
  *
  * <p>H2 is the fallback -- Spring Boot's own {@code DataSourceAutoConfiguration} wires an embedded
  * H2 {@code DataSource} automatically whenever H2 is on the test classpath and no explicit {@code
@@ -38,8 +38,7 @@ import org.springframework.context.annotation.Conditional;
  * configured).
  *
  * <p>{@code flowable.test.datasource.embedded-postgres.instance-scope} additionally controls *how*
- * the embedded-postgres provider allocates its server process (design: {@code
- * claudedocs/embedded-postgres-instance-scope-design.md}): {@code per-context} (the default) forks
+ * the embedded-postgres provider allocates its server process: {@code per-context} (the default) forks
  * a fresh native process for every Spring context, exactly as below; {@code shared} starts at most
  * one process per JVM via {@link EmbeddedPostgresSupport} and provisions a fresh logical database
  * per context on top of it. See {@link EmbeddedPostgresInstanceScopeCondition}.

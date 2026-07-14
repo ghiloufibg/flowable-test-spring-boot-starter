@@ -15,8 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 
 /**
- * Proves {@link MockExternalService} redirects a specific test class to an alternate stub folder
- * (design doc section 4.3's escape hatch), instead of the shared {@code httpmocks/demo-service}
+ * Proves {@link MockExternalService} redirects a specific test class to an alternate stub folder,
+ * instead of the shared {@code httpmocks/demo-service}
  * default that {@link FlowableTestHttpStubAutoConfigurationTest} uses -- both are "demo-service"
  * but must resolve to different content.
  */

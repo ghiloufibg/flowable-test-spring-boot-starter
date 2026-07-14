@@ -18,13 +18,10 @@ import org.flowable.task.api.Task;
 /**
  * Generic BPMN process-testing primitives, extracted from the task-completion / wait-state polling
  * boilerplate that otherwise gets duplicated in every Flowable test class. Every method operates on
- * process instance IDs, activity IDs, and candidate group names -- never a domain-specific concept
- * (design doc section 4.4).
+ * process instance IDs, activity IDs, and candidate group names -- never a domain-specific concept.
  *
  * <p>{@code diagnosticsCollector} may be {@code null} (diagnostics disabled via {@code
- * flowable.test.diagnostics.enabled=false}), in which case failures from this class are unenriched,
- * exactly as before that capability existed -- see {@code
- * claudedocs/bpmn-failure-diagnostics-design.md}.
+ * flowable.test.diagnostics.enabled=false}), in which case failures from this class are unenriched.
  */
 public final class ProcessTestHarness {
 
@@ -178,8 +175,7 @@ public final class ProcessTestHarness {
   /**
    * Attaches a BPMN diagnostics snapshot of {@code processInstanceId} to {@code failure} as a
    * suppressed exception, then returns it for the caller to throw. A no-op (returns {@code failure}
-   * unchanged) when diagnostics are disabled ({@code diagnosticsCollector} is {@code null}) -- see
-   * {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+   * unchanged) when diagnostics are disabled ({@code diagnosticsCollector} is {@code null}).
    */
   private <T extends Throwable> T withDiagnostics(T failure, String processInstanceId) {
     if (diagnosticsCollector != null) {

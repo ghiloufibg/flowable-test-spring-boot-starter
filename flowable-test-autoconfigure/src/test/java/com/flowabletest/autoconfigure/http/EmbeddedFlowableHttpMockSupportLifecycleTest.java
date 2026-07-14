@@ -8,8 +8,8 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * Unit-level proof of fix #2 from {@code claudedocs/wiremock-shared-server-fixes-design.md}: a
- * WireMock server's lifetime is bounded by the Spring contexts that {@code retain} it via {@link
+ * Unit-level proof that a WireMock server's lifetime is bounded by the Spring contexts that
+ * {@code retain} it via {@link
  * FlowableTestHttpStubAutoConfiguration#httpMockServers}, not the whole JVM. Uses {@link
  * ApplicationContextRunner} directly against the autoconfiguration class (rather than a full
  * {@code @FlowableProcessTest}) so each test can drive context open/close precisely and inspect

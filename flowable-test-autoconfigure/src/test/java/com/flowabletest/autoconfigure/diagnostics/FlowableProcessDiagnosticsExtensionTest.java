@@ -14,8 +14,7 @@ import org.junit.platform.testkit.engine.EngineTestKit;
  * {@code @FlowableProcessTest} via {@code @ExtendWith} -- actually attaches BPMN diagnostics to a
  * real test failure. Runs {@link DiagnosticsFailureFixture} (a test class that deliberately fails)
  * programmatically via {@code EngineTestKit} rather than letting it run as part of this module's
- * own Surefire execution, then inspects the resulting failure directly. Internal validation for
- * {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+ * own Surefire execution, then inspects the resulting failure directly.
  */
 class FlowableProcessDiagnosticsExtensionTest {
 

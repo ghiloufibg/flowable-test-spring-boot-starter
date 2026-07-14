@@ -23,14 +23,13 @@ import org.springframework.util.ClassUtils;
  * created during context refresh, so it must already be present.
  *
  * <p>This only handles the zero-code default path: scanning {@code
- * classpath:httpmocks/<name>/mappings/*.json} (design doc section 4.3). Per-test-class
+ * classpath:httpmocks/<name>/mappings/*.json}. Per-test-class
  * {@code @MockExternalService} overrides are handled separately by {@link
  * MockExternalServiceContextCustomizer} -- see its Javadoc for why that requires a different Spring
  * TestContext extension point than this class.
  *
  * <p>{@code flowable.test.http-mocks.services} (optional, opt-in) replaces the scan with an
- * explicit, declared list of service names -- design doc {@code
- * claudedocs/http-mock-explicit-service-registry-design.md}. Absent (the default), behavior is
+ * explicit, declared list of service names. Absent (the default), behavior is
  * unchanged: every immediate subfolder under {@code root} is discovered and started, exactly as the
  * plain scan always has. Declared, it becomes the sole source of which services start here; folders
  * on the classpath that aren't declared are left alone, and a declared name with no matching {@code

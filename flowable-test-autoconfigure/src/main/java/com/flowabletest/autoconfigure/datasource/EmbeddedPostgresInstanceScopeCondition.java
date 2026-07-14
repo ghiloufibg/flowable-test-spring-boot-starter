@@ -9,8 +9,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
  * Decides whether the embedded-Postgres {@code DataSource} bean pair in {@link
  * FlowableTestDatasourceAutoConfiguration} forks a fresh native process per Spring context ({@code
  * per-context}, the default) or starts at most one process per JVM and provisions a fresh logical
- * database per context on top of it ({@code shared}) -- see {@code
- * claudedocs/embedded-postgres-instance-scope-design.md}. Same shape as {@link
+ * database per context on top of it ({@code shared}). Same shape as {@link
  * EmbeddedPostgresPreferredCondition}: a small helper plus two trivial {@link Condition}
  * implementations, so the two bean methods stay mutually exclusive {@code @Conditional} gates
  * rather than one method branching internally -- keeping the {@code per-context} bean definition

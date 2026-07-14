@@ -10,7 +10,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
  * Pure unit test, no Spring context: proves the scanner correctly parses Flowable's real Event
  * Registry {@code *.channel} JSON shape (fixtures mirror the actual format from a live Flowable
  * project) -- both the outbound single-{@code "topic"} form and the inbound {@code "topics"} array
- * form -- while ignoring non-Kafka channels (design doc section 4.2).
+ * form -- while ignoring non-Kafka channels.
  */
 class EventRegistryChannelScannerTest {
 

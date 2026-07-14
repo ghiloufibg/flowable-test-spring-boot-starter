@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Proves the embedded-DB capability end to end (design doc section 4.1). {@code
+ * Proves the embedded-DB capability end to end. {@code
  * io.zonky.test:embedded-postgres} is on this module's own test classpath (it's an optional main
  * dependency of {@code flowable-test-autoconfigure} itself), so {@code
  * src/test/resources/application.yml} pins the rest of this module's tests to H2 explicitly and
@@ -69,8 +69,7 @@ class FlowableTestDatasourceAutoConfigurationTest {
 
   /**
    * End-to-end proof, via a real {@code @FlowableProcessTest} context, that {@code
-   * instance-scope=shared} (design: {@code claudedocs/embedded-postgres-instance-scope-design.md})
-   * still resolves to a working, isolated Postgres database -- {@link
+   * instance-scope=shared} still resolves to a working, isolated Postgres database -- {@link
    * EmbeddedPostgresInstanceScopeTest} covers the JVM-wide-singleton/isolation mechanics directly,
    * this nested class just confirms the property wires up correctly through the full
    * autoconfiguration + Spring Boot stack.

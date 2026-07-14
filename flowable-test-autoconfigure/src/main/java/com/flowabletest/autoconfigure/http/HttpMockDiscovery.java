@@ -11,8 +11,8 @@ import org.springframework.core.io.support.ResourcePatternResolver;
 
 /**
  * Scans {@code classpath*:<root>/*<name>/mappings/**} for immediate subdirectories of the HTTP
- * mocks root and treats each as a declared external service (design doc section 4.3's
- * convention-over-configuration default). Pattern-matching the resource URL (rather than trying to
+ * mocks root and treats each as a declared external service -- the
+ * convention-over-configuration default. Pattern-matching the resource URL (rather than trying to
  * "list a directory") is what makes this work identically whether resources are read from {@code
  * target/test-classes} on disk or packaged inside a jar.
  */
@@ -56,8 +56,7 @@ public final class HttpMockDiscovery {
   }
 
   /**
-   * Resolves an explicitly declared list of service names (design doc: {@code
-   * claudedocs/http-mock-explicit-service-registry-design.md}) against the {@code root/<name>}
+   * Resolves an explicitly declared list of service names against the {@code root/<name>}
    * convention, instead of discovering the set of names by scanning the classpath. Unlike {@link
    * #discoverDefaultServices(String)}, this fails fast -- for every declared name, not just the
    * ones a scan happens to turn up -- when its {@code mappings} folder doesn't exist, so a missing

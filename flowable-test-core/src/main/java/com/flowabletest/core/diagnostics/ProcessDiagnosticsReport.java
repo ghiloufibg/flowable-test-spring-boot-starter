@@ -7,8 +7,7 @@ import java.util.Map;
 /**
  * A point-in-time snapshot of one process instance's BPMN state, collected for attaching to
  * test-failure output. Deliberately domain-blind: every field is a generic Flowable concept
- * (activity ID, variable name, candidate group, job ID), never a project-specific one (design doc
- * {@code claudedocs/bpmn-failure-diagnostics-design.md}).
+ * (activity ID, variable name, candidate group, job ID), never a project-specific one.
  */
 public record ProcessDiagnosticsReport(
     String processInstanceId,

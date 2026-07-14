@@ -17,10 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Proves {@link ProcessTestHarness} and {@code @FlowableProcessTest} work end to end against a real
- * Flowable engine (pinned test-scope dependency; never leaks to consumers -- design doc section
- * 5.5) and a real, if tiny, BPMN process. This is the internal validation for design doc section
- * 4.4/4.5, plus an implicit check that {@code FlowableCompatibilityGuardAutoConfiguration} doesn't
- * reject a supported (7.1.0) engine: if it did, the context below would fail to start.
+ * Flowable engine (pinned test-scope dependency; never leaks to consumers) and a real, if tiny,
+ * BPMN process, plus an implicit check that {@code FlowableCompatibilityGuardAutoConfiguration}
+ * doesn't reject a supported (7.1.0) engine: if it did, the context below would fail to start.
  */
 @FlowableProcessTest(classes = SampleFlowableApplication.class)
 class ProcessTestHarnessTest {

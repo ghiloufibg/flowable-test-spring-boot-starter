@@ -14,8 +14,8 @@ import org.springframework.test.context.MergedContextConfiguration;
 
 /**
  * Applies {@link EmbeddedFlowableKafka#additionalTopics()} (and, only if the broker hasn't started
- * yet, {@link EmbeddedFlowableKafka#partitions()}) for one test class (design doc section 4.2's
- * fine-tuning escape hatch). Deliberately a {@link ContextCustomizer} rather than logic inside
+ * yet, {@link EmbeddedFlowableKafka#partitions()}) for one test class -- the annotation's
+ * fine-tuning escape hatch. Deliberately a {@link ContextCustomizer} rather than logic inside
  * {@link FlowableTestKafkaEnvironmentPostProcessor}: an {@code EnvironmentPostProcessor} has no
  * visibility into the JUnit test class (only the primary {@code @SpringBootTest(classes=...)}
  * source) -- same rationale as {@code MockExternalServiceContextCustomizer}.

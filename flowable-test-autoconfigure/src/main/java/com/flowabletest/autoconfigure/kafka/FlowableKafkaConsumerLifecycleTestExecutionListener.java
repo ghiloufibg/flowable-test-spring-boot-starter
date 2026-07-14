@@ -12,8 +12,7 @@ import org.springframework.util.ClassUtils;
 /**
  * Starts/stops Flowable's inbound Kafka Event Registry consumer container(s) at Spring test class
  * boundaries, active only when {@code flowable.test.kafka.broker-scope=shared} (the default; see
- * {@link FlowableKafkaBrokerScopeCondition}) -- design: {@code
- * claudedocs/kafka-shared-broker-context-isolation-design.md}.
+ * {@link FlowableKafkaBrokerScopeCondition}).
  *
  * <p>The shared broker is a JVM-wide singleton; Spring's {@code TestContextCache} keeps every
  * distinct {@code ApplicationContext} it builds resident for the rest of the JVM's life, so without

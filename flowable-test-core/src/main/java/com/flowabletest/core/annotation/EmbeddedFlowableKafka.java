@@ -11,9 +11,9 @@ import java.lang.annotation.Target;
  * FlowableTestKafkaAutoConfiguration} starts automatically whenever {@code EmbeddedKafkaBroker}
  * (spring-kafka-test) is on the classpath. The topic list itself is <b>not</b> declared here -- it
  * is derived automatically by scanning the consumer's Flowable Kafka Event Registry {@code
- * *.channel} descriptors for {@code channelType: "kafka"} entries (design doc section 4.2). This
- * annotation only exists for topics that exist outside that registry (e.g. a topic a test publishes
- * to directly without a declared inbound channel).
+ * *.channel} descriptors for {@code channelType: "kafka"} entries. This annotation only exists for
+ * topics that exist outside that registry (e.g. a topic a test publishes to directly without a
+ * declared inbound channel).
  *
  * <p>Applied via a {@code ContextCustomizer}, not the environment post-processor that does the
  * Event Registry scan (which has no visibility into this annotation -- the same reason

@@ -13,7 +13,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
- * Proves the whole Kafka capability end to end (design doc section 4.2): the {@code
+ * Proves the whole Kafka capability end to end: the {@code
  * EnvironmentPostProcessor} discovers topics from the real {@code *.channel} fixtures under {@code
  * src/test/resources/channel-fixtures}, starts a broker, injects {@code
  * spring.kafka.bootstrap-servers} before context refresh, and {@link

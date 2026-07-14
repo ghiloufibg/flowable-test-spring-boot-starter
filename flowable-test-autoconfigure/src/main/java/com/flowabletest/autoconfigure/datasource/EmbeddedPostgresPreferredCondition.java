@@ -8,7 +8,7 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
 /**
  * Decides whether the embedded-Postgres {@code DataSource} beans in {@link
  * FlowableTestDatasourceAutoConfiguration} should activate, based on {@code
- * flowable.test.datasource.provider} (design doc section 4.1): {@code embedded-postgres} forces it
+ * flowable.test.datasource.provider}: {@code embedded-postgres} forces it
  * on, {@code h2} forces it off even if {@code io.zonky.test:embedded-postgres} happens to be on the
  * classpath, and the default {@code auto} prefers it whenever it's present. This condition only
  * runs once the bean method's own {@code @ConditionalOnClass(EmbeddedPostgres.class)} has already

@@ -242,3 +242,38 @@ Enforce by default whenever possible:
 - Spring requires non-final classes to create CGLIB proxies for bean methods
 - This applies to: `@Configuration`, `@ConfigurationProperties`
 - Example: `public class DangerousPatternsConfig` (NOT `public final class`)
+
+### 6. JAVADOC MUST BE SELF-CONTAINED — NO REFERENCES TO `claudedocs/`
+
+**CRITICAL: Javadoc comments must never cite the internal `claudedocs/*.md` design files or
+"design doc section X.Y".**
+
+The `claudedocs/` design docs are internal working notes for development and will be **deleted**
+once the project stabilizes (see `## Status`). A Javadoc that points a future reader at
+`claudedocs/bpmn-failure-diagnostics-design.md` or "design doc section 4.3" becomes a dead link the
+moment that file is removed. Every Javadoc comment must carry its own rationale inline — write the
+*why*, not a pointer to where the *why* is written elsewhere — exactly like any professional Spring
+project's public API documentation.
+
+**Prohibited Examples:**
+```java
+// ❌ WRONG - dangling reference that breaks once claudedocs/ is deleted
+/**
+ * Starts one WireMock server per discovered service (design doc section 4.3).
+ * See {@code claudedocs/http-mock-explicit-service-registry-design.md} for the full rationale.
+ */
+
+// ✅ CORRECT - rationale stated inline, no external pointer
+/**
+ * Starts one WireMock server per discovered service. {@code
+ * flowable.test.http-mocks.services} (optional) replaces the classpath scan with an explicit,
+ * declared list of service names; absent, every immediate subfolder under {@code root} is
+ * discovered and started.
+ */
+```
+
+**Enforcement:**
+- Before committing, grep new/changed Javadoc for `claudedocs`, `design doc`, `design document`,
+  and `design:` — none of these strings may appear in a `.java` file's `/** ... */` comments.
+- This rule applies only to Javadoc/code comments. Prose files under `claudedocs/` themselves, and
+  this `CLAUDE.md`, may still reference each other freely — they are removed together.

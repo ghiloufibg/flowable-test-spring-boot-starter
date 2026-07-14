@@ -12,7 +12,7 @@ import org.springframework.core.Ordered;
 /**
  * Fails fast with an actionable message if the consumer's actual runtime Flowable engine version
  * falls outside this starter's supported range, instead of letting a version mismatch surface later
- * as an obscure {@code NoSuchMethodError} mid-test (design doc section 5.3).
+ * as an obscure {@code NoSuchMethodError} mid-test.
  *
  * <p>Runs first among this starter's auto-configurations so an unsupported engine is reported
  * before any other capability tries to use it.
@@ -23,7 +23,7 @@ import org.springframework.core.Ordered;
 @ConditionalOnBean(ProcessEngine.class)
 public class FlowableCompatibilityGuardAutoConfiguration {
 
-  // Design doc section 5.4: 7.x only. Track this alongside the starter's own release line.
+  // 7.x only. Track this alongside the starter's own release line.
   private static final String SUPPORTED_MIN_INCLUSIVE = "7.0.0";
   private static final String SUPPORTED_MAX_EXCLUSIVE = "8.0.0";
   private static final String STARTER_VERSION = resolveStarterVersion();

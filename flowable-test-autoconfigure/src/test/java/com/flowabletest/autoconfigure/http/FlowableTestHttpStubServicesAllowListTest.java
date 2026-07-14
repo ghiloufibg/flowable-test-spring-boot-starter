@@ -11,8 +11,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.Environment;
 
 /**
- * Proves {@code flowable.test.http-mocks.services} (design doc: {@code
- * claudedocs/http-mock-explicit-service-registry-design.md}), driving {@link
+ * Proves {@code flowable.test.http-mocks.services}, driving {@link
  * SpringApplicationBuilder} directly rather than {@code @FlowableProcessTest} or {@code
  * ApplicationContextRunner} -- same rationale as {@code FlowableKafkaBrokerScopePerContextTest}:
  * {@code ApplicationContextRunner} bypasses the {@code EnvironmentPostProcessor} SPI entirely,

@@ -10,8 +10,7 @@ import javax.sql.DataSource;
 
 /**
  * Starts (at most once per JVM) the shared embedded Postgres server used by {@code
- * instance-scope=shared} mode (design: {@code
- * claudedocs/embedded-postgres-instance-scope-design.md}), mirroring {@code
+ * instance-scope=shared} mode, mirroring {@code
  * EmbeddedFlowableKafkaSupport}'s and {@code EmbeddedFlowableHttpMockSupport}'s JVM-wide-singleton
  * pattern. Deliberately split into two responsibilities: {@link #sharedServer()} (lazy,
  * at-most-once native process start) and {@link #freshDatabase(EmbeddedPostgres)} (cheap, called

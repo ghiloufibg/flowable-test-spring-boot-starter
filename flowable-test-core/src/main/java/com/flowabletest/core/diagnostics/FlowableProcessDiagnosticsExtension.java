@@ -20,7 +20,7 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  * Bean lookups are defensive throughout ({@code getIfAvailable}, never a hard bean lookup) so a
  * disabled {@code flowable.test.diagnostics.enabled=false}, or a context-refresh failure before
  * beans exist, degrades to a silent no-op. Diagnostics collection is never allowed to replace or
- * mask the original test failure -- see {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+ * mask the original test failure.
  */
 public final class FlowableProcessDiagnosticsExtension implements BeforeEachCallback, TestWatcher {
 

@@ -22,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 /**
  * Proves {@link ProcessDiagnosticsCollector} correctly turns a process instance ID into a
  * diagnostics snapshot for both active and already-ended instances, and surfaces dead-letter job
- * failures -- the internal validation for {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+ * failures.
  */
 @FlowableProcessTest(classes = SampleFlowableApplication.class)
 class ProcessDiagnosticsCollectorTest {

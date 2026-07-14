@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Bean;
  * FlowableTestAssertionsAutoConfiguration} -- no optional third-party dependency to gate on -- but
  * unlike that one, this capability can be switched off wholesale via {@code
  * flowable.test.diagnostics.enabled=false} for consumers who have their own failure-reporting
- * tooling and consider this noise. See {@code claudedocs/bpmn-failure-diagnostics-design.md}.
+ * tooling and consider this noise.
  */
 @AutoConfiguration(
     afterName = {

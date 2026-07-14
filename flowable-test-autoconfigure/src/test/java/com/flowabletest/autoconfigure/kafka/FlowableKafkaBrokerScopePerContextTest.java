@@ -11,8 +11,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
  * Proves {@code flowable.test.kafka.broker-scope=per-context}: each Spring context gets its own
- * freshly-started {@link EmbeddedKafkaBroker}, never the JVM-wide singleton (design doc: {@code
- * claudedocs/kafka-shared-broker-context-isolation-design.md}).
+ * freshly-started {@link EmbeddedKafkaBroker}, never the JVM-wide singleton.
  *
  * <p>Drives {@link SpringApplicationBuilder} directly rather than {@code @FlowableProcessTest} or
  * {@code ApplicationContextRunner} (the pattern {@code EmbeddedPostgresInstanceScopeTest} uses for
