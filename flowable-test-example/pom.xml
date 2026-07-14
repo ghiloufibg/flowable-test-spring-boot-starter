@@ -23,6 +23,10 @@
         BPMN process driving real Kafka traffic through the engine itself.
     </description>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
     <dependencies>
         <!-- ==================== Spring Boot Core ==================== -->
         <dependency>
