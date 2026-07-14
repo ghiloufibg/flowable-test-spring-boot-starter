@@ -22,6 +22,22 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 public class FlowableTestKafkaAutoConfiguration {
 
   /**
+   * {@code destroyMethod = "release"}: registers this context's claim on the JVM-wide shared broker
+   * so its shutdown hook (in {@link EmbeddedFlowableKafkaSupport}) knows to wait for this context
+   * before destroying it. Guarded by {@code @ConditionalOnMissingBean(EmbeddedKafkaBroker.class)},
+   * matching {@link #embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease)}'s own bare
+   * {@code @ConditionalOnMissingBean}, so a lease is never acquired when a consumer-supplied {@code
+   * EmbeddedKafkaBroker} means neither bean is actually needed.
+   */
+  @Bean(destroyMethod = "release")
+  @ConditionalOnMissingBean(EmbeddedKafkaBroker.class)
+  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
+  @Conditional(FlowableKafkaBrokerScopeCondition.Shared.class)
+  EmbeddedKafkaSharedBrokerLease embeddedKafkaSharedBrokerLease() {
+    return EmbeddedFlowableKafkaSupport.acquireLease();
+  }
+
+  /**
    * {@code destroyMethod = ""} disables Spring's destroy-method inference/named-method lookup, but
    * {@code EmbeddedKafkaBroker} extends Spring's own {@code DisposableBean}, and {@code
    * DisposableBeanAdapter} invokes that interface callback unconditionally regardless of {@code
@@ -32,29 +48,23 @@ public class FlowableTestKafkaAutoConfiguration {
    * shutdown hook as its one true owner; {@link SharedEmbeddedKafkaBrokerGuard} wraps the returned
    * broker so that interface-driven per-context {@code destroy()} calls are no-ops, leaving the
    * shutdown hook's call the only one that actually tears it down. See that class's Javadoc for the
-   * failure this prevents.
+   * failure this prevents, and {@link EmbeddedFlowableKafkaSupport}'s Javadoc for what taking the
+   * lease bean above as a parameter additionally guards against.
    */
   @Bean(destroyMethod = "")
   @ConditionalOnMissingBean
   @ConditionalOnProperty("spring.kafka.bootstrap-servers")
   @Conditional(FlowableKafkaBrokerScopeCondition.Shared.class)
-  EmbeddedKafkaBroker embeddedKafkaBroker() {
-    final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.current();
-    if (broker == null) {
-      throw new IllegalStateException(
-          "spring.kafka.bootstrap-servers was set but no embedded Kafka broker was started; "
-              + "this indicates flowable-test-spring-boot-starter's own EnvironmentPostProcessor "
-              + "did not run as expected.");
-    }
-    return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(broker);
+  EmbeddedKafkaBroker embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease lease) {
+    return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(lease.broker());
   }
 
   /**
-   * {@code destroyMethod = "destroy"} here is the mirror image of {@link #embeddedKafkaBroker()}'s
-   * disabled destroy method: a {@code per-context} broker ({@link
-   * EmbeddedFlowableKafkaSupport#startFresh}) has no JVM shutdown hook of its own, so letting
-   * Spring call {@code destroy()} when *this* context closes is the only cleanup path it gets, not
-   * a double-destroy risk.
+   * {@code destroyMethod = "destroy"} here is the mirror image of {@link
+   * #embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease)}'s disabled destroy method: a {@code
+   * per-context} broker ({@link EmbeddedFlowableKafkaSupport#startFresh}) has no JVM shutdown hook
+   * of its own, so letting Spring call {@code destroy()} when *this* context closes is the only
+   * cleanup path it gets, not a double-destroy risk.
    */
   @Bean(destroyMethod = "destroy")
   @ConditionalOnMissingBean
