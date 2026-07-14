@@ -2,6 +2,7 @@ package com.flowabletest.autoconfigure.diagnostics;
 
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
+import java.util.List;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -30,6 +31,14 @@ import org.springframework.context.annotation.Bean;
  * unlike that one, this capability can be switched off wholesale via {@code
  * flowable.test.diagnostics.enabled=false} for consumers who have their own failure-reporting
  * tooling and consider this noise.
+ *
+ * <p>Two properties bound here exist specifically so this capability holds up under real, not just
+ * toy, usage: {@code flowable.test.diagnostics.redacted-variable-names} (default covers common
+ * secret-ish names) keeps a process variable that happens to hold a password or token out of text
+ * that routinely ends up archived in CI, and {@code
+ * flowable.test.diagnostics.max-tracked-process-instances} caps how many process instances a single
+ * failure will run full diagnostics queries against, so a test that starts an unusually large
+ * number of instances can't turn one failure into an unbounded diagnostics-collection cost.
  */
 @AutoConfiguration(
     afterName = {
@@ -45,8 +54,11 @@ public class FlowableTestDiagnosticsAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  ProcessInstanceTracker processInstanceTracker(ProcessEngine processEngine) {
-    final ProcessInstanceTracker tracker = new ProcessInstanceTracker();
+  ProcessInstanceTracker processInstanceTracker(
+      ProcessEngine processEngine,
+      @Value("${flowable.test.diagnostics.max-tracked-process-instances:50}")
+          int maxTrackedProcessInstances) {
+    final ProcessInstanceTracker tracker = new ProcessInstanceTracker(maxTrackedProcessInstances);
     processEngine
         .getProcessEngineConfiguration()
         .getEventDispatcher()
@@ -65,7 +77,10 @@ public class FlowableTestDiagnosticsAutoConfiguration {
           int maxActivityTrailEntries,
       @Value("${flowable.test.diagnostics.max-variable-value-length:500}")
           int maxVariableValueLength,
-      @Value("${flowable.test.diagnostics.include-failed-jobs:true}") boolean includeFailedJobs) {
+      @Value("${flowable.test.diagnostics.include-failed-jobs:true}") boolean includeFailedJobs,
+      @Value(
+              "${flowable.test.diagnostics.redacted-variable-names:password,token,secret,apikey,authorization,ssn}")
+          List<String> redactedVariableNames) {
     return new ProcessDiagnosticsCollector(
         runtimeService,
         taskService,
@@ -73,6 +88,7 @@ public class FlowableTestDiagnosticsAutoConfiguration {
         managementService,
         maxActivityTrailEntries,
         maxVariableValueLength,
-        includeFailedJobs);
+        includeFailedJobs,
+        redactedVariableNames);
   }
 }

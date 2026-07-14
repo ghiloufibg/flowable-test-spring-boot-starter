@@ -5,13 +5,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.harness.ProcessTestHarness;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
+import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
@@ -30,6 +34,8 @@ class ProcessTestHarnessTest {
 
   @Autowired RepositoryService repositoryService;
   @Autowired RuntimeService runtimeService;
+  @Autowired TaskService taskService;
+  @Autowired HistoryService historyService;
   @Autowired ManagementService managementService;
   @Autowired ProcessTestHarness harness;
 
@@ -92,5 +98,27 @@ class ProcessTestHarnessTest {
         .hasMessageContaining("dead-letter job");
 
     assertThat(Duration.between(before, Instant.now())).isLessThan(Duration.ofSeconds(5));
+  }
+
+  /**
+   * A diagnostics-collection failure (a flaky DB connection is a realistic case, right at the
+   * moment something has already gone wrong) must never replace the real harness failure with an
+   * unrelated exception. {@code diagnosticsCollector.collect(...)} is given a {@code null} {@code
+   * RuntimeService} so it throws deterministically (no mocking framework needed).
+   */
+  @Test
+  void aDiagnosticsCollectionFailureDoesNotMaskTheOriginalHarnessFailure() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+    final ProcessDiagnosticsCollector brokenCollector =
+        new ProcessDiagnosticsCollector(
+            null, taskService, historyService, managementService, 20, 500, true, List.of());
+    final ProcessTestHarness brokenHarness =
+        new ProcessTestHarness(
+            runtimeService, taskService, historyService, managementService, brokenCollector);
+
+    assertThatThrownBy(() -> brokenHarness.findSingleTask(instance.getId(), "no-such-group"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Expected exactly one task")
+        .satisfies(failure -> assertThat(failure.getSuppressed()).isEmpty());
   }
 }

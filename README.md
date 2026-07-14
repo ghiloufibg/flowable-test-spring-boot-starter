@@ -192,7 +192,28 @@ flowable:
       max-activity-trail-entries: 20     # default 20
       max-variable-value-length: 500     # default 500
       include-failed-jobs: true          # default true
+      max-tracked-process-instances: 50  # default 50
+      redacted-variable-names:           # default: password,token,secret,apikey,authorization,ssn
+        - password
+        - token
 ```
+
+Process variable values are otherwise dumped verbatim into text that routinely ends up archived in
+CI (Surefire reports, log aggregation); any variable whose name contains one of
+`redacted-variable-names` (case-insensitive substring match) is rendered as `[REDACTED]` instead.
+`max-tracked-process-instances` caps how many process instances a single test failure will run full
+diagnostics queries against -- a test that starts an unusually large number of instances can't turn
+one failure into an unbounded diagnostics-collection cost; instances beyond the cap are simply
+omitted, with a count of how many, rather than silently truncated without saying so.
+
+A diagnostics-collection failure (a flaky DB connection at exactly the moment something has already
+gone wrong is a realistic case) is logged and swallowed, never allowed to replace the real test
+failure it was trying to enrich.
+
+Not currently verified under JUnit 5 parallel test execution: the process-instance tracking this
+feature relies on is a single Spring-scoped bean reset per test method, and a shared Spring context
+running test methods concurrently could see one method's reset race another's in-flight failure
+collection. Sequential execution (JUnit 5's default) is unaffected.
 
 See `claudedocs/bpmn-failure-diagnostics-design.md` for the full rationale.
 

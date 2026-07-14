@@ -6,6 +6,8 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsFormatter;
 import org.assertj.core.api.AbstractAssert;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * AssertJ-style assertions over a process instance ID. Deliberately domain-blind: every method
@@ -22,6 +24,8 @@ import org.flowable.engine.RuntimeService;
  * flowable.test.diagnostics.enabled=false}), in which case failure messages are unenriched.
  */
 public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceAssert, String> {
+
+  private static final Logger log = LoggerFactory.getLogger(ProcessInstanceAssert.class);
 
   private final RuntimeService runtimeService;
   private final HistoryService historyService;
@@ -108,12 +112,30 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
     try {
       failWithMessage(errorMessage, arguments);
     } catch (final AssertionError failure) {
-      if (diagnosticsCollector != null) {
-        failure.addSuppressed(
-            new ProcessDiagnosticsAttachment(
-                ProcessDiagnosticsFormatter.format(diagnosticsCollector.collect(actual))));
-      }
+      attachDiagnostics(failure);
       throw failure;
+    }
+  }
+
+  /**
+   * Diagnostics collection failing (a flaky DB connection is a realistic case, right at the moment
+   * something has already gone wrong) must never replace the real assertion failure with an
+   * unrelated exception -- so a collection failure is logged and swallowed here, never rethrown.
+   */
+  private void attachDiagnostics(AssertionError failure) {
+    if (diagnosticsCollector == null) {
+      return;
+    }
+    try {
+      failure.addSuppressed(
+          new ProcessDiagnosticsAttachment(
+              ProcessDiagnosticsFormatter.format(diagnosticsCollector.collect(actual))));
+    } catch (final RuntimeException diagnosticsFailure) {
+      log.warn(
+          "Failed to collect Flowable process diagnostics for a failing assertion on process "
+              + "instance <{}>",
+          actual,
+          diagnosticsFailure);
     }
   }
 }

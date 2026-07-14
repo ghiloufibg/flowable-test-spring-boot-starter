@@ -7,6 +7,7 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.PendingTaskInf
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -29,6 +30,11 @@ import org.flowable.variable.api.history.HistoricVariableInstance;
  * output. Dead-letter jobs are the highest-value field here: an async service task that throws does
  * not fail the test directly, it gets silently parked as a dead-letter job while the test thread
  * just sees an unrelated timeout.
+ *
+ * <p>Variable values are otherwise dumped verbatim into text that routinely ends up archived in CI
+ * (Surefire reports, log aggregation), so any variable whose name contains one of {@code
+ * redactedVariableNamePatterns} (case-insensitive substring match) is rendered as {@code
+ * [REDACTED]} instead of its real value, before truncation.
  */
 public final class ProcessDiagnosticsCollector {
 
@@ -39,6 +45,8 @@ public final class ProcessDiagnosticsCollector {
    */
   private static final String SEQUENCE_FLOW_ACTIVITY_TYPE = "sequenceFlow";
 
+  private static final String REDACTED_PLACEHOLDER = "[REDACTED]";
+
   private final RuntimeService runtimeService;
   private final TaskService taskService;
   private final HistoryService historyService;
@@ -46,6 +54,7 @@ public final class ProcessDiagnosticsCollector {
   private final int maxActivityTrailEntries;
   private final int maxVariableValueLength;
   private final boolean includeFailedJobs;
+  private final List<String> redactedVariableNamePatterns;
 
   public ProcessDiagnosticsCollector(
       RuntimeService runtimeService,
@@ -54,7 +63,8 @@ public final class ProcessDiagnosticsCollector {
       ManagementService managementService,
       int maxActivityTrailEntries,
       int maxVariableValueLength,
-      boolean includeFailedJobs) {
+      boolean includeFailedJobs,
+      List<String> redactedVariableNamePatterns) {
     this.runtimeService = runtimeService;
     this.taskService = taskService;
     this.historyService = historyService;
@@ -62,6 +72,10 @@ public final class ProcessDiagnosticsCollector {
     this.maxActivityTrailEntries = maxActivityTrailEntries;
     this.maxVariableValueLength = maxVariableValueLength;
     this.includeFailedJobs = includeFailedJobs;
+    this.redactedVariableNamePatterns =
+        redactedVariableNamePatterns.stream()
+            .map(pattern -> pattern.toLowerCase(Locale.ROOT))
+            .toList();
   }
 
   /** Collects a full snapshot for one process instance, active or already ended. */
@@ -136,11 +150,14 @@ public final class ProcessDiagnosticsCollector {
                       (first, second) -> first));
     }
     final Map<String, String> rendered = new TreeMap<>();
-    raw.forEach((name, value) -> rendered.put(name, renderValue(value)));
+    raw.forEach((name, value) -> rendered.put(name, renderValue(name, value)));
     return rendered;
   }
 
-  private String renderValue(Object value) {
+  private String renderValue(String variableName, Object value) {
+    if (isRedacted(variableName)) {
+      return REDACTED_PLACEHOLDER;
+    }
     if (value == null) {
       return "null";
     }
@@ -155,6 +172,11 @@ public final class ProcessDiagnosticsCollector {
         + "... (truncated, "
         + text.length()
         + " chars total)";
+  }
+
+  private boolean isRedacted(String variableName) {
+    final String lowerCaseName = variableName.toLowerCase(Locale.ROOT);
+    return redactedVariableNamePatterns.stream().anyMatch(lowerCaseName::contains);
   }
 
   private List<ActivityTrailEntry> activityTrail(String processInstanceId) {

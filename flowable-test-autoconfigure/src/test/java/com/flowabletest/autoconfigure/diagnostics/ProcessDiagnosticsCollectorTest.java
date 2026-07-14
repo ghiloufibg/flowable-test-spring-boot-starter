@@ -7,6 +7,7 @@ import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport;
 import com.flowabletest.core.harness.ProcessTestHarness;
+import java.util.List;
 import java.util.Map;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
@@ -98,7 +99,14 @@ class ProcessDiagnosticsCollectorTest {
   void truncatesVariableValuesLongerThanTheConfiguredMaximum() {
     final ProcessDiagnosticsCollector shortLimitCollector =
         new ProcessDiagnosticsCollector(
-            runtimeService, taskService, historyService, managementService, 20, 10, true);
+            runtimeService,
+            taskService,
+            historyService,
+            managementService,
+            20,
+            10,
+            true,
+            List.of());
     final ProcessInstance instance =
         runtimeService.startProcessInstanceByKey(
             "diagnosticsProcess", Map.of("payload", "a-value-much-longer-than-ten-characters"));
@@ -106,6 +114,44 @@ class ProcessDiagnosticsCollectorTest {
     final ProcessDiagnosticsReport report = shortLimitCollector.collect(instance.getId());
 
     assertThat(report.variables().get("payload")).contains("truncated");
+  }
+
+  @Test
+  void redactsVariablesWhoseNameMatchesAConfiguredPattern() {
+    final ProcessDiagnosticsCollector redactingCollector =
+        new ProcessDiagnosticsCollector(
+            runtimeService,
+            taskService,
+            historyService,
+            managementService,
+            20,
+            500,
+            true,
+            List.of("password", "token"));
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagnosticsProcess",
+            Map.of("orderId", 42, "userPassword", "hunter2", "authToken", "abc123"));
+
+    final ProcessDiagnosticsReport report = redactingCollector.collect(instance.getId());
+
+    assertThat(report.variables())
+        .containsEntry("orderId", "42")
+        .containsEntry("userPassword", "[REDACTED]")
+        .containsEntry("authToken", "[REDACTED]");
+  }
+
+  @Test
+  void theAutoConfiguredCollectorRedactsCommonSecretLikeVariableNamesByDefault() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagnosticsProcess", Map.of("orderId", 1, "password", "hunter2"));
+
+    final ProcessDiagnosticsReport report = collector.collect(instance.getId());
+
+    assertThat(report.variables())
+        .containsEntry("orderId", "1")
+        .containsEntry("password", "[REDACTED]");
   }
 
   @Test

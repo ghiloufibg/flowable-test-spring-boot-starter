@@ -11,12 +11,27 @@ public final class ProcessDiagnosticsFormatter {
 
   /** Formats a batch of reports, one per tracked process instance, as a single text block. */
   public static String format(List<ProcessDiagnosticsReport> reports) {
+    return format(reports, 0);
+  }
+
+  /**
+   * Same as {@link #format(List)}, but appends a note when {@code omittedProcessInstanceCount} is
+   * positive -- {@link ProcessInstanceTracker} stops tracking new process instances once its
+   * configured limit is reached, so a report built from a capped list may not be the whole story.
+   */
+  public static String format(
+      List<ProcessDiagnosticsReport> reports, int omittedProcessInstanceCount) {
     final StringBuilder text = new StringBuilder();
     text.append("===== Flowable process diagnostics =====\n");
     if (reports.isEmpty()) {
       text.append("(no process instances were tracked during this test)\n");
     } else {
       reports.forEach(report -> text.append(format(report)));
+    }
+    if (omittedProcessInstanceCount > 0) {
+      text.append("... (")
+          .append(omittedProcessInstanceCount)
+          .append(" more process instance(s) not shown -- tracking limit reached)\n");
     }
     text.append("==========================================");
     return text.toString();

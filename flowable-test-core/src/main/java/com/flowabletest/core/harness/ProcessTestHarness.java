@@ -18,6 +18,8 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.task.api.Task;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Generic BPMN process-testing primitives, extracted from the task-completion / wait-state polling
@@ -28,6 +30,8 @@ import org.flowable.task.api.Task;
  * flowable.test.diagnostics.enabled=false}), in which case failures from this class are unenriched.
  */
 public final class ProcessTestHarness {
+
+  private static final Logger log = LoggerFactory.getLogger(ProcessTestHarness.class);
 
   /**
    * Engine event types that can plausibly change the outcome of a pending {@link #poll} call.
@@ -253,13 +257,25 @@ public final class ProcessTestHarness {
   /**
    * Attaches a BPMN diagnostics snapshot of {@code processInstanceId} to {@code failure} as a
    * suppressed exception, then returns it for the caller to throw. A no-op (returns {@code failure}
-   * unchanged) when diagnostics are disabled ({@code diagnosticsCollector} is {@code null}).
+   * unchanged) when diagnostics are disabled ({@code diagnosticsCollector} is {@code null}) or when
+   * collection itself fails -- a flaky DB connection is a realistic case right at the moment
+   * something has already gone wrong, and that must never replace the real failure being reported
+   * with an unrelated exception, so a collection failure is logged and swallowed here instead.
    */
   private <T extends Throwable> T withDiagnostics(T failure, String processInstanceId) {
-    if (diagnosticsCollector != null) {
+    if (diagnosticsCollector == null) {
+      return failure;
+    }
+    try {
       failure.addSuppressed(
           new ProcessDiagnosticsAttachment(
               ProcessDiagnosticsFormatter.format(diagnosticsCollector.collect(processInstanceId))));
+    } catch (final RuntimeException diagnosticsFailure) {
+      log.warn(
+          "Failed to collect Flowable process diagnostics for a harness failure on process "
+              + "instance <{}>",
+          processInstanceId,
+          diagnosticsFailure);
     }
     return failure;
   }

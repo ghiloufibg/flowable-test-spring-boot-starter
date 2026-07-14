@@ -43,7 +43,9 @@ public final class FlowableProcessDiagnosticsExtension implements BeforeEachCall
       final List<ProcessDiagnosticsReport> reports =
           tracker.get().trackedProcessInstanceIds().stream().map(collector.get()::collect).toList();
       cause.addSuppressed(
-          new ProcessDiagnosticsAttachment(ProcessDiagnosticsFormatter.format(reports)));
+          new ProcessDiagnosticsAttachment(
+              ProcessDiagnosticsFormatter.format(
+                  reports, tracker.get().omittedProcessInstanceCount())));
     } catch (final RuntimeException diagnosticsFailure) {
       log.warn(
           "Failed to collect Flowable process diagnostics for failed test", diagnosticsFailure);
