@@ -8,3 +8,13 @@ flowable:
   test:
     datasource:
       provider: h2
+
+# kafka-clients' own TestUtils.tempDirectory() registers a JVM shutdown hook to delete its temp
+# directory, independent of and racing EmbeddedKafkaKraftBroker's own close -- a known upstream bug
+# (KAFKA-17574/KAFKA-17575, fixed in Kafka 4.0.0, not available to Flowable 7.x's Spring Boot 3
+# dependency chain). On Windows this surfaces as a harmless but noisy ERROR-level
+# FileSystemException at JVM exit, well after every test has already passed; silenced here rather
+# than chased upstream.
+logging:
+  level:
+    org.apache.kafka.test.TestUtils: OFF
