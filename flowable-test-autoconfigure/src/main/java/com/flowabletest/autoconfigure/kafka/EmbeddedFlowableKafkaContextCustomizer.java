@@ -5,7 +5,6 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -39,7 +38,8 @@ record EmbeddedFlowableKafkaContextCustomizer(EmbeddedFlowableKafka annotation)
       startBrokerFromAnnotation(context);
       return;
     }
-    addMissingTopics(existing);
+    EmbeddedFlowableKafkaSupport.addTopicsIfMissing(
+        existing, annotation.additionalTopics(), annotation.partitions());
   }
 
   private void startBrokerFromAnnotation(ConfigurableApplicationContext context) {
@@ -56,17 +56,5 @@ record EmbeddedFlowableKafkaContextCustomizer(EmbeddedFlowableKafka annotation)
             new MapPropertySource(
                 PROPERTY_SOURCE_NAME,
                 Map.of("spring.kafka.bootstrap-servers", started.getBrokersAsString())));
-  }
-
-  private void addMissingTopics(EmbeddedKafkaBroker broker) {
-    final Set<String> existingTopics = broker.getTopics();
-    final NewTopic[] topicsToAdd =
-        Arrays.stream(annotation.additionalTopics())
-            .filter(topic -> !existingTopics.contains(topic))
-            .map(topic -> new NewTopic(topic, annotation.partitions(), (short) 1))
-            .toArray(NewTopic[]::new);
-    if (topicsToAdd.length > 0) {
-      broker.addTopics(topicsToAdd);
-    }
   }
 }

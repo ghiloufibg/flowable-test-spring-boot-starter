@@ -1,8 +1,8 @@
 package com.flowabletest.autoconfigure.kafka;
 
-import java.time.Duration;
+import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 
@@ -35,24 +35,27 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
  * (short) duration of one broker's own startup, never a whole context's lifetime, so it does not
  * reintroduce the JVM-wide-singleton cost {@code per-context} mode exists to avoid.
  *
- * <p>{@link #acquireLease()}/{@link #releaseLease()} count how many still-open Spring contexts hold
- * an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker. That count is consulted only
- * once, by {@link #closeAfterOutstandingLeasesDrain}, when the shutdown hook registered in {@link
- * #startIfNeeded} fires at JVM exit -- the broker is meant to be reused indefinitely across many,
- * non-overlapping test contexts for the JVM's whole lifetime, so it must not be torn down simply
- * because the count momentarily reaches zero between contexts. Kafka client shutdown paths
- * (producer close, consumer container stop) already tolerate an unreachable broker gracefully, so
- * this hardens the shared broker's shutdown against a class of race rather than fixing an observed
- * failure.
+ * <p>The shared broker started by {@link #startIfNeeded} is reused indefinitely across every
+ * non-overlapping test context for the JVM's whole lifetime and torn down only once, by the
+ * shutdown hook registered there, at JVM exit -- deliberately not on a per-context basis. This
+ * mirrors Spring Kafka's own recommended pattern for sharing one broker across test classes (a
+ * plain start-once singleton, cleaned up only at JVM exit), rather than attempting deterministic
+ * per-context teardown: Spring's {@code TestContext} cache does not close cached contexts via JVM
+ * shutdown hooks on the normal (non-AOT) path this starter runs under, so there is nothing for a
+ * per-context reference count to meaningfully protect against here.
+ *
+ * <p>{@link #addTopicsIfMissing} is the one other operation that mutates a broker already handed
+ * out to a context ({@link EmbeddedFlowableKafkaContextCustomizer} calls it for {@code
+ * additionalTopics()} on an already-running shared broker) and is synchronized on its own {@link
+ * #TOPIC_LOCK}, separate from {@link #LOCK}, so a fast topic-add on one context's already-running
+ * broker never blocks behind an unrelated context's own multi-second broker startup.
  */
 final class EmbeddedFlowableKafkaSupport {
 
-  private static final Duration SHUTDOWN_WAIT_TIMEOUT = Duration.ofSeconds(30);
-
   private static final Object LOCK = new Object();
+  private static final Object TOPIC_LOCK = new Object();
   private static volatile EmbeddedKafkaBroker broker;
   private static final ThreadLocal<EmbeddedKafkaBroker> PER_CONTEXT_BROKER = new ThreadLocal<>();
-  private static final AtomicInteger OUTSTANDING_LEASES = new AtomicInteger();
 
   private EmbeddedFlowableKafkaSupport() {}
 
@@ -65,64 +68,38 @@ final class EmbeddedFlowableKafkaSupport {
       if (broker == null) {
         final EmbeddedKafkaBroker started = start(topics, partitions);
         Runtime.getRuntime()
-            .addShutdownHook(
-                new Thread(
-                    () -> closeAfterOutstandingLeasesDrain(started),
-                    "flowable-test-embedded-kafka-shutdown"));
+            .addShutdownHook(new Thread(started::destroy, "flowable-test-embedded-kafka-shutdown"));
         broker = started;
       }
       return broker;
     }
   }
 
-  /**
-   * Waits, up to {@link #SHUTDOWN_WAIT_TIMEOUT}, for every still-cached Spring context holding an
-   * {@link EmbeddedKafkaSharedBrokerLease} to release it before destroying the broker. JVM shutdown
-   * hooks run concurrently in unspecified order by JDK design, so without this wait, this hook
-   * could race Spring's own shutdown-hook-driven closing of those still-cached contexts. The
-   * timeout is a safety net against a lease that never releases (a stuck context, a bug) hanging
-   * JVM shutdown forever.
-   */
-  private static void closeAfterOutstandingLeasesDrain(final EmbeddedKafkaBroker started) {
-    synchronized (LOCK) {
-      final long deadline = System.currentTimeMillis() + SHUTDOWN_WAIT_TIMEOUT.toMillis();
-      while (OUTSTANDING_LEASES.get() > 0) {
-        final long remaining = deadline - System.currentTimeMillis();
-        if (remaining <= 0) {
-          break;
-        }
-        try {
-          LOCK.wait(remaining);
-        } catch (final InterruptedException e) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-    }
-    started.destroy();
-  }
-
-  static EmbeddedKafkaSharedBrokerLease acquireLease() {
-    final EmbeddedKafkaBroker current = broker;
-    if (current == null) {
-      throw new IllegalStateException(
-          "spring.kafka.bootstrap-servers was set but no embedded Kafka broker was started; "
-              + "this indicates flowable-test-spring-boot-starter's own EnvironmentPostProcessor "
-              + "did not run as expected.");
-    }
-    OUTSTANDING_LEASES.incrementAndGet();
-    return new EmbeddedKafkaSharedBrokerLease(current);
-  }
-
-  static void releaseLease() {
-    synchronized (LOCK) {
-      OUTSTANDING_LEASES.decrementAndGet();
-      LOCK.notifyAll();
-    }
-  }
-
   static EmbeddedKafkaBroker current() {
     return broker;
+  }
+
+  /**
+   * Adds every entry of {@code requestedTopics} not already present on {@code broker}, filtering
+   * and adding under {@link #TOPIC_LOCK} so two threads racing this method against the same running
+   * broker (e.g. two {@code SEPARATE_CONTEXT} classes with overlapping {@code additionalTopics()}
+   * refreshing concurrently) cannot both observe a topic as missing and both call {@code
+   * addTopics()} for it -- the underlying admin call throws {@code TopicExistsException} if a
+   * second caller loses that race.
+   */
+  static void addTopicsIfMissing(
+      EmbeddedKafkaBroker broker, String[] requestedTopics, int partitions) {
+    synchronized (TOPIC_LOCK) {
+      final Set<String> existingTopics = broker.getTopics();
+      final NewTopic[] topicsToAdd =
+          Arrays.stream(requestedTopics)
+              .filter(topic -> !existingTopics.contains(topic))
+              .map(topic -> new NewTopic(topic, partitions, (short) 1))
+              .toArray(NewTopic[]::new);
+      if (topicsToAdd.length > 0) {
+        broker.addTopics(topicsToAdd);
+      }
+    }
   }
 
   static EmbeddedKafkaBroker startFresh(Set<String> topics, int partitions) {

@@ -33,23 +33,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 public class FlowableTestKafkaAutoConfiguration {
 
   /**
-   * Acquires this context's lease on the JVM-wide shared broker via {@code destroyMethod =
-   * "release"}, so {@link EmbeddedFlowableKafkaSupport}'s shutdown hook knows to wait for this
-   * context before destroying it. Guarded the same way as {@link
-   * #embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease)}, so a lease is never acquired when a
-   * consumer-supplied {@code EmbeddedKafkaBroker} bean means neither bean is actually needed.
-   */
-  @Bean(destroyMethod = "release")
-  @ConditionalOnMissingBean(EmbeddedKafkaBroker.class)
-  @Conditional({
-    FlowableTestKafkaProvisionedCondition.class,
-    FlowableKafkaBrokerScopeCondition.Shared.class
-  })
-  EmbeddedKafkaSharedBrokerLease embeddedKafkaSharedBrokerLease() {
-    return EmbeddedFlowableKafkaSupport.acquireLease();
-  }
-
-  /**
    * Exposes the JVM-wide shared broker as a bean with {@code destroyMethod = ""}. That attribute
    * alone does not stop Spring from calling {@code destroy()} on this bean, because {@code
    * EmbeddedKafkaBroker} implements Spring's own {@code DisposableBean} and {@code
@@ -65,8 +48,15 @@ public class FlowableTestKafkaAutoConfiguration {
     FlowableTestKafkaProvisionedCondition.class,
     FlowableKafkaBrokerScopeCondition.Shared.class
   })
-  EmbeddedKafkaBroker embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease lease) {
-    return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(lease.broker());
+  EmbeddedKafkaBroker embeddedKafkaBroker() {
+    final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.current();
+    if (broker == null) {
+      throw new IllegalStateException(
+          "FlowableTestKafkaProvisionedCondition matched but no shared embedded Kafka broker was "
+              + "started; this indicates flowable-test-spring-boot-starter's own "
+              + "EnvironmentPostProcessor did not run as expected.");
+    }
+    return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(broker);
   }
 
   /**
