@@ -21,6 +21,10 @@
         <module>flowable-test-autoconfigure</module>
         <module>flowable-test-starter</module>
 
+        <!-- Opt-in only: never pulled in by flowable-test-starter's aggregator. A consumer adds
+             this as its own extra test-scope dependency to enable the BPMN debug UI capability. -->
+        <module>flowable-test-debug-ui</module>
+
         <!-- A real Spring Boot + Flowable + Kafka Event Registry consumer app, depending on
              flowable-test-spring-boot-starter exactly like an external project would. This is a
              one-way dependency: it validates the starter end to end (real BPMN send-event tasks,
@@ -87,6 +91,13 @@
             <dependency>
                 <groupId>org.flowable</groupId>
                 <artifactId>flowable-spring-boot-starter</artifactId>
+                <version>${flowable.version}</version>
+            </dependency>
+            <!-- Renders the BPMN debug UI's process-instance diagram; same provided/${flowable.version}
+                 pinning rationale as flowable-engine above. -->
+            <dependency>
+                <groupId>org.flowable</groupId>
+                <artifactId>flowable-image-generator</artifactId>
                 <version>${flowable.version}</version>
             </dependency>
 

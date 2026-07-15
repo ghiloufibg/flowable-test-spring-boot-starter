@@ -1,0 +1,6 @@
+flowable:
+  test:
+    datasource:
+      provider: h2
+    debug-ui:
+      enabled: true

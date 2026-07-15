@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.flowabletest</groupId>
+        <artifactId>flowable-test-spring-boot-starter-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>flowable-test-debug-ui</artifactId>
+    <name>Flowable Test Starter - Debug UI</name>
+    <description>
+        Opt-in, read-only BPMN process debug viewer: a JDK HttpServer bound to localhost only,
+        serving the current-activity-highlighted diagram plus variables/tasks/activity-trail for
+        process instances tracked by the diagnostics capability. Never pulled in by
+        flowable-test-spring-boot-starter's aggregator; a consumer adds this module explicitly and
+        sets flowable.test.debug-ui.enabled=true to use it.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-core</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-autoconfigure</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Flowable API surface: provided, never propagated (same rationale as every other
+             module in this reactor). -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-engine</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-image-generator</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ==================== Internal validation only (test scope, never propagated) ====================
+             A real, pinned Flowable engine so this module's own tests can prove the debug UI
+             actually works end to end. -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
