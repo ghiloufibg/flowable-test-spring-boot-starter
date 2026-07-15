@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowabletest.com/message-catch">
+
+    <message id="approvalMessage" name="approvalMessage" />
+
+    <process id="messageCatchProcess" name="Message Catch Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="awaitApprovalMessage" />
+
+        <intermediateCatchEvent id="awaitApprovalMessage" name="Await Approval Message">
+            <messageEventDefinition messageRef="approvalMessage" />
+        </intermediateCatchEvent>
+        <sequenceFlow id="flow2" sourceRef="awaitApprovalMessage" targetRef="endEvent" />
+
+        <endEvent id="endEvent" />
+    </process>
+</definitions>

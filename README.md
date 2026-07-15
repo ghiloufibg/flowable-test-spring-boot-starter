@@ -167,10 +167,24 @@ See `claudedocs/http-mock-explicit-service-registry-design.md` for the full rati
 ### Process assertions / harness
 
 `ProcessTestHarness` (autowired once a `ProcessEngine` exists) wraps the
-`RuntimeService`/`TaskService`/`HistoryService` boilerplate that otherwise gets duplicated in
-every Flowable test class: `completeSingleTask`, `awaitTaskForCandidateGroup`, `awaitEnded`,
-`awaitCallActivityChild`, and a `ProcessInstanceAssert` (`hasEndedAt`, `isActive`,
-`hasNoTaskForCandidateGroup`).
+`RuntimeService`/`TaskService`/`HistoryService`/`ManagementService` boilerplate that otherwise gets
+duplicated in every Flowable test class:
+
+- Task completion: `completeSingleTask`.
+- Event triggering: `triggerSignal`, `triggerMessage`, `forceTimerDue` (moves a boundary/intermediate
+  timer job straight to executable, skipping its real-world duration, and leaves it for the
+  already-running async executor to run rather than executing it from the calling thread).
+- Node discovery: `currentActivityIds` (every wait-state the instance is currently sitting at),
+  `activeExecutionCount` (how many parallel executions, e.g. of a multi-instance activity, are at a
+  given node).
+- Event-driven waits, all woken by the engine's own events rather than a fixed polling interval, and
+  all fail fast on a dead-letter job: `awaitEnded`, `awaitTaskForCandidateGroup`,
+  `awaitCallActivityChild`, `awaitActivity` (any wait-state node, not just a user task or call
+  activity), `awaitActivityCount`.
+- Variables: `setVariables`.
+- Assertions via `assertThat(processInstanceId)` → `ProcessInstanceAssert`: `hasEndedAt`, `isActive`,
+  `isWaitingAt` (the instance's current wait-state activities, exactly), `hasNoTaskForCandidateGroup`,
+  `hasVariable`, `hasVariables`.
 
 ### BPMN failure diagnostics
 

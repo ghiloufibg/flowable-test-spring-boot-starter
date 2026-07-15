@@ -17,23 +17,29 @@ import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.flowable.engine.history.HistoricActivityInstance;
 import org.flowable.engine.history.HistoricProcessInstance;
+import org.flowable.engine.runtime.Execution;
+import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Generic BPMN process-testing primitives -- task completion, event-driven wait-state polling, and
- * dead-letter fail-fast checks -- extracted from the boilerplate that otherwise gets duplicated in
- * every Flowable test class. Every method operates on process instance IDs, activity IDs, and
- * candidate group names, never a domain-specific concept.
+ * Generic BPMN process-testing primitives -- task completion, event-triggering, event-driven
+ * wait-state polling, and dead-letter fail-fast checks -- extracted from the boilerplate that
+ * otherwise gets duplicated in every Flowable test class. Every method operates on process instance
+ * IDs, activity IDs, and candidate group names, never a domain-specific concept.
  *
  * <p>{@link #assertThat(String)} hands off to {@link ProcessInstanceAssert} for state assertions.
- * {@link #awaitEnded}, {@link #awaitTaskForCandidateGroup}, and {@link #awaitCallActivityChild} all
- * wait on the engine's own events instead of a fixed polling interval, and fail fast -- well before
- * the caller's timeout -- the moment a dead-letter job appears on the process instance, since an
- * async delegate that throws does not fail the awaiting test directly. Every failure raised by this
- * class is enriched with a {@link ProcessDiagnosticsAttachment} built via {@link
+ * {@link #triggerSignal}, {@link #triggerMessage}, and {@link #forceTimerDue} resume a process
+ * instance waiting on an intermediate/boundary event without requiring the caller to resolve the
+ * underlying execution or job by hand. {@link #awaitEnded}, {@link #awaitTaskForCandidateGroup},
+ * {@link #awaitCallActivityChild}, {@link #awaitActivity}, and {@link #awaitActivityCount} all wait
+ * on the engine's own events instead of a fixed polling interval, and fail fast -- well before the
+ * caller's timeout -- the moment a dead-letter job appears on the process instance, since an async
+ * delegate that throws does not fail the awaiting test directly. Every failure raised by this class
+ * is enriched with a {@link ProcessDiagnosticsAttachment} built via {@link
  * ProcessDiagnosticsCollector}, unless {@code diagnosticsCollector} is {@code null} (diagnostics
  * disabled via {@code flowable.test.diagnostics.enabled=false}), in which case failures are
  * unenriched.
@@ -41,6 +47,13 @@ import org.slf4j.LoggerFactory;
 public final class ProcessTestHarness {
 
   private static final Logger log = LoggerFactory.getLogger(ProcessTestHarness.class);
+
+  /**
+   * Flowable records a {@code HistoricActivityInstance} for every sequence-flow transition, not
+   * just BPMN nodes -- never a place a process instance meaningfully "waits," so {@link
+   * #currentActivityIds} excludes it.
+   */
+  private static final String SEQUENCE_FLOW_ACTIVITY_TYPE = "sequenceFlow";
 
   /**
    * Engine event types that can plausibly change the outcome of a pending {@link #poll} call.
@@ -145,6 +158,84 @@ public final class ProcessTestHarness {
   }
 
   /**
+   * Broadcasts a global BPMN signal, resuming every execution across every process instance
+   * currently waiting on a signal catch event registered for {@code signalName}. Mirrors {@link
+   * RuntimeService#signalEventReceived(String)} directly rather than resolving a single execution
+   * first -- unlike {@link #triggerMessage} and {@link #forceTimerDue}, a signal is inherently
+   * process-instance-agnostic, so there is no single execution to look up.
+   */
+  public void triggerSignal(String signalName) {
+    runtimeService.signalEventReceived(signalName);
+  }
+
+  /**
+   * Resumes the single execution of {@code processInstanceId} waiting on a message catch event
+   * subscribed to {@code messageName} -- the message counterpart of {@link #findSingleTask},
+   * failing loudly if there isn't exactly one waiting execution rather than leaving the caller to
+   * decode a raw Flowable exception.
+   */
+  public void triggerMessage(String processInstanceId, String messageName) {
+    final Execution execution = findSingleMessageExecution(processInstanceId, messageName);
+    runtimeService.messageEventReceived(messageName, execution.getId());
+  }
+
+  private Execution findSingleMessageExecution(String processInstanceId, String messageName) {
+    final List<Execution> executions =
+        runtimeService
+            .createExecutionQuery()
+            .processInstanceId(processInstanceId)
+            .messageEventSubscriptionName(messageName)
+            .list();
+    if (executions.size() != 1) {
+      throw withDiagnostics(
+          new IllegalStateException(
+              "Expected exactly one execution of process instance "
+                  + processInstanceId
+                  + " waiting on message '"
+                  + messageName
+                  + "' but found "
+                  + executions.size()),
+          processInstanceId);
+    }
+    return executions.get(0);
+  }
+
+  /**
+   * Moves the timer job backing the boundary/intermediate timer event {@code activityId} of {@code
+   * processInstanceId} straight to executable, skipping its real-world duration -- fails loudly if
+   * there isn't exactly one such timer job. Deliberately stops at {@link
+   * ManagementService#moveTimerToExecutableJob}: calling {@link ManagementService#executeJob} from
+   * the calling thread races the already-running async job executor for the same job and can
+   * deadlock under Postgres, so the moved job is left for that executor to pick up and run on its
+   * own -- await the resulting state change with {@link #awaitActivity} or {@link #awaitEnded}.
+   */
+  public void forceTimerDue(String processInstanceId, String activityId) {
+    final List<Job> timerJobs =
+        managementService
+            .createTimerJobQuery()
+            .processInstanceId(processInstanceId)
+            .elementId(activityId)
+            .list();
+    if (timerJobs.size() != 1) {
+      throw withDiagnostics(
+          new IllegalStateException(
+              "Expected exactly one timer job for activity '"
+                  + activityId
+                  + "' on process instance "
+                  + processInstanceId
+                  + " but found "
+                  + timerJobs.size()),
+          processInstanceId);
+    }
+    managementService.moveTimerToExecutableJob(timerJobs.get(0).getId());
+  }
+
+  /** Sets process variables on the still-active process instance {@code processInstanceId}. */
+  public void setVariables(String processInstanceId, Map<String, Object> variables) {
+    runtimeService.setVariables(processInstanceId, variables);
+  }
+
+  /**
    * Deploys {@code <processesRoot>/<processName>.bpmn20.xml} as its own single-resource deployment
    * -- the programmatic escape hatch (layer 3 of the process-deployment allow-list) for a process
    * only one test in the whole suite needs, not worth declaring via {@code
@@ -185,6 +276,37 @@ public final class ProcessTestHarness {
   public boolean hasEnded(String processInstanceId) {
     return runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).count()
         == 0;
+  }
+
+  /**
+   * The activity IDs of every wait-state {@code processInstanceId} is currently sitting at --
+   * parallel branches (including parallel multi-instance activities) can leave more than one. Reads
+   * the same live activity-instance state {@code ProcessDiagnosticsCollector} reports for a failure
+   * snapshot, but as a plain list a test can assert against directly.
+   */
+  public List<String> currentActivityIds(String processInstanceId) {
+    return historyService
+        .createHistoricActivityInstanceQuery()
+        .processInstanceId(processInstanceId)
+        .unfinished()
+        .list()
+        .stream()
+        .filter(a -> !SEQUENCE_FLOW_ACTIVITY_TYPE.equals(a.getActivityType()))
+        .map(HistoricActivityInstance::getActivityId)
+        .toList();
+  }
+
+  /**
+   * The number of executions of {@code processInstanceId} currently active at {@code activityId} --
+   * typically used for a parallel multi-instance activity, where several executions can be at the
+   * same node at once.
+   */
+  public long activeExecutionCount(String processInstanceId, String activityId) {
+    return runtimeService
+        .createExecutionQuery()
+        .processInstanceId(processInstanceId)
+        .activityId(activityId)
+        .count();
   }
 
   /**
@@ -254,6 +376,68 @@ public final class ProcessTestHarness {
             + parentProcessInstanceId
             + ">",
         parentProcessInstanceId);
+  }
+
+  /**
+   * Waits until at least one execution of {@code processInstanceId} is active at {@code activityId}
+   * -- the generic counterpart of {@link #awaitTaskForCandidateGroup} and {@link
+   * #awaitCallActivityChild} for wait-state node types neither of those cover (receive tasks,
+   * signal/message catch events, timer boundary events). See {@link #awaitEnded} for the wake-up
+   * and fail-fast behavior.
+   */
+  public List<Execution> awaitActivity(
+      String processInstanceId, String activityId, Duration timeout) {
+    return poll(
+        timeout,
+        () -> {
+          final List<Execution> executions =
+              runtimeService
+                  .createExecutionQuery()
+                  .processInstanceId(processInstanceId)
+                  .activityId(activityId)
+                  .list();
+          return executions.isEmpty() ? null : executions;
+        },
+        "an execution of process instance <"
+            + processInstanceId
+            + "> at activity <"
+            + activityId
+            + ">",
+        processInstanceId);
+  }
+
+  /**
+   * Waits until exactly {@code expectedCount} executions of {@code processInstanceId} are active at
+   * {@code activityId} -- typically used to confirm a parallel multi-instance activity has settled
+   * to a specific number of remaining branches (e.g. after completing some of them). See {@link
+   * #awaitEnded} for the wake-up and fail-fast behavior.
+   *
+   * <p>When completing several branches of the same parallel multi-instance activity in one test,
+   * await the count after each completion rather than completing them back-to-back: each completion
+   * updates the multi-instance activity's shared parent execution, and doing that twice with no
+   * settling point in between can throw a {@code FlowableOptimisticLockingException}.
+   */
+  public List<Execution> awaitActivityCount(
+      String processInstanceId, String activityId, int expectedCount, Duration timeout) {
+    return poll(
+        timeout,
+        () -> {
+          final List<Execution> executions =
+              runtimeService
+                  .createExecutionQuery()
+                  .processInstanceId(processInstanceId)
+                  .activityId(activityId)
+                  .list();
+          return executions.size() == expectedCount ? executions : null;
+        },
+        "exactly "
+            + expectedCount
+            + " executions of process instance <"
+            + processInstanceId
+            + "> at activity <"
+            + activityId
+            + ">",
+        processInstanceId);
   }
 
   /**

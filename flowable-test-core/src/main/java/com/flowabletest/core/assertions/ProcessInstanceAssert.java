@@ -4,9 +4,16 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsAttachment;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsFormatter;
 import com.flowabletest.core.harness.ProcessTestHarness;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import org.assertj.core.api.AbstractAssert;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.RuntimeService;
+import org.flowable.engine.history.HistoricActivityInstance;
+import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +33,13 @@ import org.slf4j.LoggerFactory;
 public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceAssert, String> {
 
   private static final Logger log = LoggerFactory.getLogger(ProcessInstanceAssert.class);
+
+  /**
+   * Flowable records a {@code HistoricActivityInstance} for every sequence-flow transition, not
+   * just BPMN nodes -- never a place a process instance meaningfully "waits," so {@link
+   * #isWaitingAt} excludes it.
+   */
+  private static final String SEQUENCE_FLOW_ACTIVITY_TYPE = "sequenceFlow";
 
   private final RuntimeService runtimeService;
   private final HistoryService historyService;
@@ -100,6 +114,80 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
           actual, candidateGroup, historicTasks);
     }
     return this;
+  }
+
+  /**
+   * The process instance is active and its current unfinished activities are exactly {@code
+   * activityIds} (order-independent) -- parallel branches, including a parallel multi-instance
+   * activity, can legitimately leave more than one. Precise by design, the same way {@link
+   * #hasEndedAt} pins down a single end activity: an unexpected extra wait state is a real defect
+   * this assertion is meant to catch, not something to silently tolerate.
+   */
+  public ProcessInstanceAssert isWaitingAt(String... activityIds) {
+    isActive();
+    final Set<String> expectedActivityIds = Set.of(activityIds);
+    final Set<String> actualActivityIds = new HashSet<>(currentActivityIds());
+    if (!expectedActivityIds.equals(actualActivityIds)) {
+      failWithDiagnostics(
+          "Expected process instance <%s> to be waiting at <%s> but was waiting at <%s>",
+          actual, expectedActivityIds, actualActivityIds);
+    }
+    return this;
+  }
+
+  private List<String> currentActivityIds() {
+    return historyService
+        .createHistoricActivityInstanceQuery()
+        .processInstanceId(actual)
+        .unfinished()
+        .list()
+        .stream()
+        .filter(a -> !SEQUENCE_FLOW_ACTIVITY_TYPE.equals(a.getActivityType()))
+        .map(HistoricActivityInstance::getActivityId)
+        .toList();
+  }
+
+  /**
+   * The process instance (active or already ended) has variable {@code name} equal to {@code
+   * expectedValue}, resolved from live runtime state while active and from history once ended -- so
+   * this assertion works identically before and after {@code hasEndedAt} in the same test.
+   */
+  public ProcessInstanceAssert hasVariable(String name, Object expectedValue) {
+    isNotNull();
+    final Object actualValue = resolveVariable(name);
+    if (!Objects.equals(actualValue, expectedValue)) {
+      failWithDiagnostics(
+          "Expected process instance <%s> to have variable <%s> equal to <%s> but was <%s>",
+          actual, name, expectedValue, actualValue);
+    }
+    return this;
+  }
+
+  /**
+   * The process instance (active or already ended) has every variable in {@code expectedVariables}
+   * equal to its given value; variables the process instance holds but that aren't listed here are
+   * ignored, so a caller can assert on just the variables relevant to the test without enumerating
+   * every variable the process happens to carry.
+   */
+  public ProcessInstanceAssert hasVariables(Map<String, Object> expectedVariables) {
+    isNotNull();
+    expectedVariables.forEach(this::hasVariable);
+    return this;
+  }
+
+  private Object resolveVariable(String name) {
+    final long active =
+        runtimeService.createProcessInstanceQuery().processInstanceId(actual).count();
+    if (active != 0) {
+      return runtimeService.getVariable(actual, name);
+    }
+    final HistoricVariableInstance historicVariable =
+        historyService
+            .createHistoricVariableInstanceQuery()
+            .processInstanceId(actual)
+            .variableName(name)
+            .singleResult();
+    return historicVariable == null ? null : historicVariable.getValue();
   }
 
   /**

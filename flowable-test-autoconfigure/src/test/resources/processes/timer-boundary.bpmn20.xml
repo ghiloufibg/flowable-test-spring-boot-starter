@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowabletest.com/timer-boundary">
+
+    <process id="timerBoundaryProcess" name="Timer Boundary Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="awaitConfirmationTask" />
+
+        <userTask id="awaitConfirmationTask" name="Await Confirmation" flowable:candidateGroups="reviewers" />
+        <sequenceFlow id="flow2" sourceRef="awaitConfirmationTask" targetRef="confirmedEndEvent" />
+
+        <boundaryEvent id="confirmationTimeoutBoundary" attachedToRef="awaitConfirmationTask" cancelActivity="true">
+            <timerEventDefinition>
+                <timeDuration>PT4H</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+        <sequenceFlow id="flow3" sourceRef="confirmationTimeoutBoundary" targetRef="timedOutEndEvent" />
+
+        <endEvent id="confirmedEndEvent" name="Confirmed" />
+        <endEvent id="timedOutEndEvent" name="Timed Out" />
+    </process>
+</definitions>

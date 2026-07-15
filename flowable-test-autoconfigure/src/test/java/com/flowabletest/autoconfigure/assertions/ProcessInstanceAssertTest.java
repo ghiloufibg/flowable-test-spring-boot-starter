@@ -67,4 +67,52 @@ class ProcessInstanceAssertTest {
         .hasMessageContaining("to still be active, but it has ended")
         .satisfies(failure -> assertThat(failure.getSuppressed()).isEmpty());
   }
+
+  @Test
+  void hasVariableMatchesALiveThenAHistoricValue() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey("helloProcess", Map.of("orderId", "abc-123"));
+
+    harness.assertThat(instance.getId()).hasVariable("orderId", "abc-123");
+
+    harness.completeSingleTask(instance.getId(), "reviewers", Map.of());
+
+    harness.assertThat(instance.getId()).hasVariable("orderId", "abc-123");
+  }
+
+  @Test
+  void hasVariableFailsWithDiagnosticsWhenTheValueDoesNotMatch() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey("helloProcess", Map.of("orderId", "abc-123"));
+
+    assertThatThrownBy(() -> harness.assertThat(instance.getId()).hasVariable("orderId", "wrong"))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("orderId")
+        .hasMessageContaining("wrong");
+  }
+
+  @Test
+  void hasVariablesMatchesASubsetOfTheProcessInstancesVariables() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "helloProcess", Map.of("orderId", "abc-123", "priority", "high"));
+
+    harness.assertThat(instance.getId()).hasVariables(Map.of("orderId", "abc-123"));
+  }
+
+  @Test
+  void isWaitingAtMatchesTheCurrentWaitStateExactly() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    harness.assertThat(instance.getId()).isWaitingAt("reviewTask");
+  }
+
+  @Test
+  void isWaitingAtFailsWithDiagnosticsWhenTheWaitStateDoesNotMatch() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    assertThatThrownBy(() -> harness.assertThat(instance.getId()).isWaitingAt("noSuchActivity"))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("to be waiting at");
+  }
 }

@@ -20,8 +20,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 /**
  * Publishes to and awaits messages on Kafka topics using a {@link KafkaProducer}/{@link
  * KafkaConsumer} pair, replacing the raw producer/consumer setup that otherwise gets hand-rolled in
- * every Flowable + Kafka Event Registry test class. Operates purely on topic/key/value strings, with
- * no payload schema knowledge.
+ * every Flowable + Kafka Event Registry test class. Operates purely on topic/key/value strings,
+ * with no payload schema knowledge.
  *
  * <p>Registered as a bean by {@code FlowableTestKafkaAutoConfiguration}, pointed at whichever
  * embedded broker is active for the test.

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowabletest.com/multi-instance-review">
+
+    <process id="multiInstanceReviewProcess" name="Multi-Instance Review Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="reviewItemTask" />
+
+        <userTask id="reviewItemTask" name="Review Item" flowable:candidateGroups="reviewers">
+            <multiInstanceLoopCharacteristics isSequential="false">
+                <loopCardinality>${itemCount}</loopCardinality>
+            </multiInstanceLoopCharacteristics>
+        </userTask>
+        <sequenceFlow id="flow2" sourceRef="reviewItemTask" targetRef="endEvent" />
+
+        <endEvent id="endEvent" />
+    </process>
+</definitions>

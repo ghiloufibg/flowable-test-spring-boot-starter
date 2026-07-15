@@ -16,6 +16,7 @@ import org.flowable.engine.ManagementService;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
+import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
@@ -102,6 +103,32 @@ class ProcessTestHarnessTest {
         harness.awaitTaskForCandidateGroup(instance.getId(), "reviewers", Duration.ofSeconds(5));
 
     assertThat(task.getName()).isEqualTo("Review");
+  }
+
+  @Test
+  void currentActivityIdsReflectsTheActiveWaitState() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    assertThat(harness.currentActivityIds(instance.getId())).containsExactly("reviewTask");
+  }
+
+  @Test
+  void awaitActivityWaitsUntilAnExecutionArrivesAtTheGivenNode() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    final List<Execution> executions =
+        harness.awaitActivity(instance.getId(), "reviewTask", Duration.ofSeconds(5));
+
+    assertThat(executions).hasSize(1);
+  }
+
+  @Test
+  void setVariablesUpdatesAnActiveProcessInstance() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    harness.setVariables(instance.getId(), Map.of("orderId", "abc-123"));
+
+    harness.assertThat(instance.getId()).hasVariable("orderId", "abc-123");
   }
 
   /**
