@@ -17,8 +17,23 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
  * #startIfNeeded(Set, int)} starts at most one JVM-wide singleton broker ({@code shared}, the
  * default); {@link #startFresh(Set, int)} starts a brand-new broker on every call ({@code
  * per-context}). {@link #currentPerContext()} hands the most recently {@link #startFresh started}
- * broker back to the {@code @Bean} method that exposes it, relying on the post-processor and that
- * bean method running synchronously within the same context's refresh.
+ * broker back to the {@code @Bean} method that exposes it. That hand-off is scoped per {@link
+ * ThreadLocal}, not a plain static field: {@code EnvironmentPostProcessor} and that later
+ * {@code @Bean} method always run on the same thread for a given context's own refresh, but under
+ * concurrent test execution (e.g. two {@code SEPARATE_CONTEXT} classes with {@code
+ * broker-scope=per-context} refreshing at the same time on different threads) a plain static field
+ * would let one context's {@link #startFresh} call overwrite another's before that other context's
+ * {@code @Bean} method got to read it back, silently wiring the wrong broker into the wrong
+ * context.
+ *
+ * <p>{@link #start} itself is fully serialized on {@link #LOCK}, independent of and in addition to
+ * {@link #startIfNeeded}'s own double-checked locking around it: constructing two {@code
+ * EmbeddedKafkaKraftBroker} instances concurrently anywhere in this JVM -- shared or per-context,
+ * any combination -- throws {@code IllegalArgumentException: A metric named '...' already exists},
+ * because the underlying Kafka test-kit registers broker-metadata metrics in a registry that is not
+ * scoped per broker instance. Serializing construction only blocks other broker startups for the
+ * (short) duration of one broker's own startup, never a whole context's lifetime, so it does not
+ * reintroduce the JVM-wide-singleton cost {@code per-context} mode exists to avoid.
  *
  * <p>{@link #acquireLease()}/{@link #releaseLease()} count how many still-open Spring contexts hold
  * an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker. That count is consulted only
@@ -36,7 +51,7 @@ final class EmbeddedFlowableKafkaSupport {
 
   private static final Object LOCK = new Object();
   private static volatile EmbeddedKafkaBroker broker;
-  private static volatile EmbeddedKafkaBroker lastPerContextBroker;
+  private static final ThreadLocal<EmbeddedKafkaBroker> PER_CONTEXT_BROKER = new ThreadLocal<>();
   private static final AtomicInteger OUTSTANDING_LEASES = new AtomicInteger();
 
   private EmbeddedFlowableKafkaSupport() {}
@@ -112,22 +127,32 @@ final class EmbeddedFlowableKafkaSupport {
 
   static EmbeddedKafkaBroker startFresh(Set<String> topics, int partitions) {
     final EmbeddedKafkaBroker started = start(topics, partitions);
-    lastPerContextBroker = started;
+    PER_CONTEXT_BROKER.set(started);
     return started;
   }
 
+  /**
+   * Removes the {@link ThreadLocal} entry once read, not just returns it -- once this context's
+   * {@code @Bean} method has consumed it, keeping the reference around would only pin this (pooled,
+   * reused-across-many-test-classes) thread's last per-context broker in memory for no further
+   * purpose.
+   */
   static EmbeddedKafkaBroker currentPerContext() {
-    return lastPerContextBroker;
+    final EmbeddedKafkaBroker started = PER_CONTEXT_BROKER.get();
+    PER_CONTEXT_BROKER.remove();
+    return started;
   }
 
   private static EmbeddedKafkaBroker start(Set<String> topics, int partitions) {
-    final EmbeddedKafkaBroker started =
-        new EmbeddedKafkaKraftBroker(1, partitions, topics.toArray(new String[0]));
-    try {
-      started.afterPropertiesSet();
-    } catch (final Exception e) {
-      throw new IllegalStateException("Failed to start the embedded Kafka broker", e);
+    synchronized (LOCK) {
+      final EmbeddedKafkaBroker started =
+          new EmbeddedKafkaKraftBroker(1, partitions, topics.toArray(new String[0]));
+      try {
+        started.afterPropertiesSet();
+      } catch (final Exception e) {
+        throw new IllegalStateException("Failed to start the embedded Kafka broker", e);
+      }
+      return started;
     }
-    return started;
   }
 }
