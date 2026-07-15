@@ -28,9 +28,10 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      # -Xwerror (configured in the root pom's maven-javadoc-plugin management) turns a broken
-      # {@code @link} or malformed HTML into a build failure instead of a silently ignored warning.
-      - run: mvn --batch-mode --no-transfer-progress javadoc:javadoc
+      # -Xwerror (root pom's maven-javadoc-plugin management) turns a broken {@code @link} or
+      # malformed HTML into a build failure. `compile` must precede the standalone javadoc:javadoc
+      # goal, which alone won't build flowable-test-core before flowable-test-autoconfigure needs it.
+      - run: mvn --batch-mode --no-transfer-progress compile javadoc:javadoc
 
   test:
     name: Test (Flowable ${{ matrix.flowable-version }})
