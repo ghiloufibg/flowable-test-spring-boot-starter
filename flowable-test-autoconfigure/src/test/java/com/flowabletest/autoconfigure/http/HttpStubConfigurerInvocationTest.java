@@ -1,9 +1,11 @@
 package com.flowabletest.autoconfigure.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.flowabletest.core.http.HttpStubConfigurer;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.flowable.engine.ProcessEngine;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -27,6 +29,7 @@ class HttpStubConfigurerInvocationTest {
     final ApplicationContextRunner runner =
         new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(FlowableTestHttpStubAutoConfiguration.class))
+            .withBean(ProcessEngine.class, () -> mock(ProcessEngine.class))
             .withBean(HttpStubConfigurer.class, () -> countingConfigurer)
             .withPropertyValues("flowable.test.http-mocks.discovered=" + name + "=" + location);
 

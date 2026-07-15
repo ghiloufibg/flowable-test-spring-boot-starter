@@ -1,26 +1,35 @@
 package com.flowabletest.autoconfigure.kafka;
 
 import com.flowabletest.core.kafka.KafkaTestBridge;
+import org.flowable.engine.ProcessEngine;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 
 /**
  * Auto-configuration for embedded Kafka test support. Activates when {@code EmbeddedKafkaBroker}
- * and Flowable's {@code RuntimeService} are both on the classpath. Exposes the broker started by
- * {@link FlowableTestKafkaEnvironmentPostProcessor} as an ordinary bean (for consumers who want
- * {@code @Autowired EmbeddedKafkaBroker}) and registers a {@link KafkaTestBridge} pointed at it.
- * Every bean here is additionally conditional on {@code spring.kafka.bootstrap-servers} actually
- * having been set by the post-processor; if no Kafka Event Registry channel descriptors were found
- * on the classpath, none of them activate.
+ * and Flowable's {@code RuntimeService} are both on the classpath and a {@code ProcessEngine} bean
+ * exists. Exposes the broker started by {@link FlowableTestKafkaEnvironmentPostProcessor} as an
+ * ordinary bean (for consumers who want {@code @Autowired EmbeddedKafkaBroker}) and registers a
+ * {@link KafkaTestBridge} pointed at it. Every bean here is additionally gated by {@link
+ * FlowableTestKafkaProvisionedCondition}, matched only when that post-processor actually
+ * provisioned a broker for this context -- deliberately not keyed off whether {@code
+ * spring.kafka.bootstrap-servers} happens to be set, since a consumer may set that property
+ * independently (a real broker, Testcontainers) with no Kafka Event Registry channel descriptors on
+ * the classpath at all.
  */
-@AutoConfiguration
+@AutoConfiguration(
+    afterName = {
+      "org.flowable.spring.boot.ProcessEngineAutoConfiguration",
+      "org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration"
+    })
 @ConditionalOnClass(value = EmbeddedKafkaBroker.class, name = "org.flowable.engine.RuntimeService")
+@ConditionalOnBean(ProcessEngine.class)
 public class FlowableTestKafkaAutoConfiguration {
 
   /**
@@ -32,8 +41,10 @@ public class FlowableTestKafkaAutoConfiguration {
    */
   @Bean(destroyMethod = "release")
   @ConditionalOnMissingBean(EmbeddedKafkaBroker.class)
-  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
-  @Conditional(FlowableKafkaBrokerScopeCondition.Shared.class)
+  @Conditional({
+    FlowableTestKafkaProvisionedCondition.class,
+    FlowableKafkaBrokerScopeCondition.Shared.class
+  })
   EmbeddedKafkaSharedBrokerLease embeddedKafkaSharedBrokerLease() {
     return EmbeddedFlowableKafkaSupport.acquireLease();
   }
@@ -50,8 +61,10 @@ public class FlowableTestKafkaAutoConfiguration {
    */
   @Bean(destroyMethod = "")
   @ConditionalOnMissingBean
-  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
-  @Conditional(FlowableKafkaBrokerScopeCondition.Shared.class)
+  @Conditional({
+    FlowableTestKafkaProvisionedCondition.class,
+    FlowableKafkaBrokerScopeCondition.Shared.class
+  })
   EmbeddedKafkaBroker embeddedKafkaBroker(EmbeddedKafkaSharedBrokerLease lease) {
     return SharedEmbeddedKafkaBrokerGuard.suppressDestroy(lease.broker());
   }
@@ -64,14 +77,16 @@ public class FlowableTestKafkaAutoConfiguration {
    */
   @Bean(destroyMethod = "destroy")
   @ConditionalOnMissingBean
-  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
-  @Conditional(FlowableKafkaBrokerScopeCondition.PerContext.class)
+  @Conditional({
+    FlowableTestKafkaProvisionedCondition.class,
+    FlowableKafkaBrokerScopeCondition.PerContext.class
+  })
   EmbeddedKafkaBroker embeddedKafkaBrokerPerContext() {
     final EmbeddedKafkaBroker broker = EmbeddedFlowableKafkaSupport.currentPerContext();
     if (broker == null) {
       throw new IllegalStateException(
-          "spring.kafka.bootstrap-servers was set but no per-context embedded Kafka broker was "
-              + "started; this indicates flowable-test-spring-boot-starter's own "
+          "FlowableTestKafkaProvisionedCondition matched but no per-context embedded Kafka broker "
+              + "was started; this indicates flowable-test-spring-boot-starter's own "
               + "EnvironmentPostProcessor did not run as expected.");
     }
     return broker;
@@ -80,7 +95,7 @@ public class FlowableTestKafkaAutoConfiguration {
   /** Registers a {@link KafkaTestBridge} wired to the embedded broker's bootstrap servers. */
   @Bean
   @ConditionalOnMissingBean
-  @ConditionalOnProperty("spring.kafka.bootstrap-servers")
+  @Conditional(FlowableTestKafkaProvisionedCondition.class)
   KafkaTestBridge kafkaTestBridge(
       @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
     return new KafkaTestBridge(bootstrapServers);

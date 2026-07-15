@@ -2,7 +2,9 @@ package com.flowabletest.autoconfigure.http;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
+import org.flowable.engine.ProcessEngine;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -25,7 +27,8 @@ class EmbeddedFlowableHttpMockSupportLifecycleTest {
 
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
-          .withConfiguration(AutoConfigurations.of(FlowableTestHttpStubAutoConfiguration.class));
+          .withConfiguration(AutoConfigurations.of(FlowableTestHttpStubAutoConfiguration.class))
+          .withBean(ProcessEngine.class, () -> mock(ProcessEngine.class));
 
   @Test
   void sharedDefaultServerSurvivesOneContextCloseAndStopsAfterTheLast() {

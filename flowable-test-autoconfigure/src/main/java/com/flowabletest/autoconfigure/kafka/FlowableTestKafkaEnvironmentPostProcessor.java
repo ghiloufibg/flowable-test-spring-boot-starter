@@ -32,7 +32,7 @@ import org.springframework.util.ClassUtils;
 public final class FlowableTestKafkaEnvironmentPostProcessor
     implements EnvironmentPostProcessor, Ordered {
 
-  private static final String PROPERTY_SOURCE_NAME = "flowableTestEmbeddedKafka";
+  static final String PROPERTY_SOURCE_NAME = "flowableTestEmbeddedKafka";
 
   @Override
   public void postProcessEnvironment(

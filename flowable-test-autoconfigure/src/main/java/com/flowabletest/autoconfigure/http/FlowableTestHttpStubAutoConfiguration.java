@@ -6,13 +6,16 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.flowable.engine.ProcessEngine;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.core.env.Environment;
 
@@ -28,31 +31,47 @@ import org.springframework.core.env.Environment;
  * from the discovered map alone could disagree with an override applied later in the same context.
  * {@code httpMockServersReleaseListener} releases that exact same resolved map when the context
  * closes, bounding a server's lifetime to its last referencing context rather than the whole JVM.
+ * Both live in the nested {@link HttpMockServersConfiguration}, gated by one shared
+ * {@code @ConditionalOnMissingBean(HttpMockServers.class)}, so a consumer-supplied {@code
+ * HttpMockServers} bean makes retain and release back off together -- never releasing a refcount
+ * this context never incremented.
  */
-@AutoConfiguration
+@AutoConfiguration(
+    afterName = {
+      "org.flowable.spring.boot.ProcessEngineAutoConfiguration",
+      "org.flowable.spring.boot.ProcessEngineServicesAutoConfiguration"
+    })
 @ConditionalOnClass(value = WireMockServer.class, name = "org.flowable.engine.RuntimeService")
+@ConditionalOnBean(ProcessEngine.class)
 public class FlowableTestHttpStubAutoConfiguration {
 
-  /** Resolves and retains this context's final set of HTTP mock servers, keyed by service name. */
-  @Bean
-  @ConditionalOnMissingBean
-  HttpMockServers httpMockServers(Environment environment) {
-    final Map<String, String> resolved = HttpMockServiceRegistry.resolve(environment);
-    final Map<String, WireMockServer> servers = new LinkedHashMap<>();
-    resolved.forEach(
-        (name, location) ->
-            servers.put(name, EmbeddedFlowableHttpMockSupport.retain(name, location)));
-    return new HttpMockServers(servers);
-  }
+  @Configuration(proxyBeanMethods = false)
+  @ConditionalOnMissingBean(HttpMockServers.class)
+  static class HttpMockServersConfiguration {
 
-  /**
-   * Releases this context's resolved server map on {@link ContextClosedEvent}, decrementing each
-   * server's refcount so it stops once no context still references it.
-   */
-  @Bean
-  ApplicationListener<ContextClosedEvent> httpMockServersReleaseListener(Environment environment) {
-    final Map<String, String> resolved = HttpMockServiceRegistry.resolve(environment);
-    return event -> resolved.forEach(EmbeddedFlowableHttpMockSupport::release);
+    /**
+     * Resolves and retains this context's final set of HTTP mock servers, keyed by service name.
+     */
+    @Bean
+    HttpMockServers httpMockServers(Environment environment) {
+      final Map<String, String> resolved = HttpMockServiceRegistry.resolve(environment);
+      final Map<String, WireMockServer> servers = new LinkedHashMap<>();
+      resolved.forEach(
+          (name, location) ->
+              servers.put(name, EmbeddedFlowableHttpMockSupport.retain(name, location)));
+      return new HttpMockServers(servers);
+    }
+
+    /**
+     * Releases this context's resolved server map on {@link ContextClosedEvent}, decrementing each
+     * server's refcount so it stops once no context still references it.
+     */
+    @Bean
+    ApplicationListener<ContextClosedEvent> httpMockServersReleaseListener(
+        Environment environment) {
+      final Map<String, String> resolved = HttpMockServiceRegistry.resolve(environment);
+      return event -> resolved.forEach(EmbeddedFlowableHttpMockSupport::release);
+    }
   }
 
   /**

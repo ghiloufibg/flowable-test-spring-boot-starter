@@ -63,6 +63,7 @@ public class FlowableTestDatasourceAutoConfiguration {
    */
   @Configuration(proxyBeanMethods = false)
   @ConditionalOnClass(EmbeddedPostgres.class)
+  @ConditionalOnMissingBean(DataSource.class)
   static class EmbeddedPostgresDataSourceConfiguration {
 
     /**
@@ -72,7 +73,9 @@ public class FlowableTestDatasourceAutoConfiguration {
      * shutdown -- if that hook wins the race, the native process is already dead by the time
      * Flowable's engine beans (which depend on this one and are destroyed first) try to open a JDBC
      * connection during their own {@code destroy()}. Disabling it leaves Spring's own
-     * destroy-method call, which correctly runs after those dependents, as the sole owner.
+     * destroy-method call, which correctly runs after those dependents, as the sole owner. Guarded
+     * by this class's own {@code @ConditionalOnMissingBean(DataSource.class)} so the native process
+     * never forks when a consumer-supplied {@code DataSource} means it's not needed.
      */
     @Bean(destroyMethod = "close")
     @Conditional({
@@ -88,24 +91,22 @@ public class FlowableTestDatasourceAutoConfiguration {
       EmbeddedPostgresPreferredCondition.class,
       EmbeddedPostgresInstanceScopeCondition.PerContext.class
     })
-    @ConditionalOnMissingBean(DataSource.class)
     DataSource embeddedPostgresDataSource(EmbeddedPostgres embeddedPostgres) {
       return embeddedPostgres.getPostgresDatabase();
     }
 
     /**
      * {@code destroyMethod = "release"}: registers this context's claim on the JVM-wide shared
-     * server so its shutdown hook knows to wait for this context before closing it. Guarded by the
-     * same {@code @ConditionalOnMissingBean(DataSource.class)} as the {@code DataSource} bean below
-     * so a lease is never acquired (and the server never lazily started) when a consumer-supplied
-     * {@code DataSource} means neither bean is actually needed.
+     * server so its shutdown hook knows to wait for this context before closing it. Guarded by this
+     * class's own {@code @ConditionalOnMissingBean(DataSource.class)} so a lease is never acquired
+     * (and the server never lazily started) when a consumer-supplied {@code DataSource} means
+     * neither bean is actually needed.
      */
     @Bean(destroyMethod = "release")
     @Conditional({
       EmbeddedPostgresPreferredCondition.class,
       EmbeddedPostgresInstanceScopeCondition.Shared.class
     })
-    @ConditionalOnMissingBean(DataSource.class)
     EmbeddedPostgresSharedServerLease embeddedPostgresSharedServerLease() {
       return EmbeddedPostgresSupport.acquireLease();
     }
@@ -123,7 +124,6 @@ public class FlowableTestDatasourceAutoConfiguration {
       EmbeddedPostgresPreferredCondition.class,
       EmbeddedPostgresInstanceScopeCondition.Shared.class
     })
-    @ConditionalOnMissingBean(DataSource.class)
     DataSource embeddedPostgresSharedDataSource(EmbeddedPostgresSharedServerLease lease) {
       return EmbeddedPostgresSupport.freshDatabase(lease.server());
     }
