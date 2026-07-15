@@ -3,18 +3,17 @@ package com.flowabletest.autoconfigure.diagnostics;
 import com.flowabletest.core.diagnostics.FlowableProcessDiagnosticsExtension;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
-import java.util.List;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
 /**
@@ -50,15 +49,15 @@ import org.springframework.context.annotation.Bean;
     prefix = "flowable.test.diagnostics",
     name = "enabled",
     matchIfMissing = true)
+@EnableConfigurationProperties(FlowableTestDiagnosticsProperties.class)
 public class FlowableTestDiagnosticsAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
   ProcessInstanceTracker processInstanceTracker(
-      ProcessEngine processEngine,
-      @Value("${flowable.test.diagnostics.max-tracked-process-instances:50}")
-          int maxTrackedProcessInstances) {
-    final ProcessInstanceTracker tracker = new ProcessInstanceTracker(maxTrackedProcessInstances);
+      ProcessEngine processEngine, FlowableTestDiagnosticsProperties properties) {
+    final ProcessInstanceTracker tracker =
+        new ProcessInstanceTracker(properties.maxTrackedProcessInstances());
     processEngine
         .getProcessEngineConfiguration()
         .getEventDispatcher()
@@ -73,22 +72,15 @@ public class FlowableTestDiagnosticsAutoConfiguration {
       TaskService taskService,
       HistoryService historyService,
       ManagementService managementService,
-      @Value("${flowable.test.diagnostics.max-activity-trail-entries:20}")
-          int maxActivityTrailEntries,
-      @Value("${flowable.test.diagnostics.max-variable-value-length:500}")
-          int maxVariableValueLength,
-      @Value("${flowable.test.diagnostics.include-failed-jobs:true}") boolean includeFailedJobs,
-      @Value(
-              "${flowable.test.diagnostics.redacted-variable-names:password,token,secret,apikey,authorization,ssn}")
-          List<String> redactedVariableNames) {
+      FlowableTestDiagnosticsProperties properties) {
     return new ProcessDiagnosticsCollector(
         runtimeService,
         taskService,
         historyService,
         managementService,
-        maxActivityTrailEntries,
-        maxVariableValueLength,
-        includeFailedJobs,
-        redactedVariableNames);
+        properties.maxActivityTrailEntries(),
+        properties.maxVariableValueLength(),
+        properties.includeFailedJobs(),
+        properties.redactedVariableNames());
   }
 }

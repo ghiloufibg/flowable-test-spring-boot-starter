@@ -1,0 +1,152 @@
+{
+  "groups": [
+    {
+      "name": "flowable.test.diagnostics",
+      "type": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "BPMN test-failure diagnostics: enriches a @FlowableProcessTest failure with a snapshot of the failing process instance."
+    }
+  ],
+  "properties": [
+    {
+      "name": "flowable.test.diagnostics.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "Whether the BPMN failure-diagnostics capability is active at all.",
+      "defaultValue": true
+    },
+    {
+      "name": "flowable.test.diagnostics.max-tracked-process-instances",
+      "type": "java.lang.Integer",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "How many process instances a single test failure will run full diagnostics queries against; instances started beyond this cap are omitted, with a count of how many.",
+      "defaultValue": 50
+    },
+    {
+      "name": "flowable.test.diagnostics.max-activity-trail-entries",
+      "type": "java.lang.Integer",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "How many entries of a process instance's activity trail a diagnostics snapshot includes.",
+      "defaultValue": 20
+    },
+    {
+      "name": "flowable.test.diagnostics.max-variable-value-length",
+      "type": "java.lang.Integer",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "How many characters of a single process variable's rendered value a snapshot includes.",
+      "defaultValue": 500
+    },
+    {
+      "name": "flowable.test.diagnostics.include-failed-jobs",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "Whether a diagnostics snapshot includes dead-letter job failures.",
+      "defaultValue": true
+    },
+    {
+      "name": "flowable.test.diagnostics.redacted-variable-names",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.flowabletest.autoconfigure.diagnostics.FlowableTestDiagnosticsProperties",
+      "description": "Process variable names (case-insensitive substring match) rendered as [REDACTED] rather than dumped verbatim into a diagnostics snapshot."
+    },
+    {
+      "name": "flowable.test.datasource.provider",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.datasource.FlowableTestDatasourceAutoConfiguration",
+      "description": "Which DataSource backs the embedded engine. 'auto' prefers embedded-postgres when io.zonky.test:embedded-postgres is on the test classpath, otherwise H2.",
+      "defaultValue": "auto"
+    },
+    {
+      "name": "flowable.test.datasource.embedded-postgres.instance-scope",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.datasource.FlowableTestDatasourceAutoConfiguration",
+      "description": "'per-context' forks a fresh native embedded-postgres process per Spring context; 'shared' starts at most one process per JVM and provisions a fresh logical database per context on top of it.",
+      "defaultValue": "per-context"
+    },
+    {
+      "name": "flowable.test.kafka.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.flowabletest.autoconfigure.kafka.FlowableTestKafkaAutoConfiguration",
+      "description": "Whether the embedded Kafka broker capability is active at all.",
+      "defaultValue": true
+    },
+    {
+      "name": "flowable.test.kafka.channel-location",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.kafka.FlowableTestKafkaAutoConfiguration",
+      "description": "Classpath pattern scanned for Flowable Kafka Event Registry *.channel descriptors when auto-discovering topics for the embedded broker.",
+      "defaultValue": "classpath*:**/*.channel"
+    },
+    {
+      "name": "flowable.test.kafka.partitions",
+      "type": "java.lang.Integer",
+      "sourceType": "com.flowabletest.autoconfigure.kafka.FlowableTestKafkaAutoConfiguration",
+      "description": "Partition count for every auto-discovered and additional Kafka topic created on the embedded broker.",
+      "defaultValue": 1
+    },
+    {
+      "name": "flowable.test.kafka.broker-scope",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.kafka.FlowableTestKafkaAutoConfiguration",
+      "description": "'shared' reuses one JVM-wide embedded Kafka broker singleton across every Spring context; 'per-context' starts a fresh broker for each context.",
+      "defaultValue": "shared"
+    },
+    {
+      "name": "flowable.test.http-mocks.enabled",
+      "type": "java.lang.Boolean",
+      "sourceType": "com.flowabletest.autoconfigure.http.FlowableTestHttpStubAutoConfiguration",
+      "description": "Whether the declarative WireMock HTTP stubbing capability is active at all.",
+      "defaultValue": true
+    },
+    {
+      "name": "flowable.test.http-mocks.root",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.http.FlowableTestHttpStubAutoConfiguration",
+      "description": "Classpath root scanned for one WireMock mapping folder per immediate subfolder ('<root>/<service-name>/mappings/*.json').",
+      "defaultValue": "classpath:httpmocks"
+    },
+    {
+      "name": "flowable.test.http-mocks.services",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.flowabletest.autoconfigure.http.FlowableTestHttpStubAutoConfiguration",
+      "description": "Explicit, declared list of HTTP mock service names to start, replacing the default classpath scan of every immediate subfolder under the configured root. A declared name with no matching mappings folder fails fast, before the ApplicationContext refreshes."
+    },
+    {
+      "name": "flowable.test.processes.root",
+      "type": "java.lang.String",
+      "sourceType": "com.flowabletest.autoconfigure.deployment.FlowableTestProcessDeploymentAutoConfiguration",
+      "description": "Classpath root BPMN process file names resolve against, both for the default deployment allow-list and for @FlowableProcessTest(processes = ...) / ProcessTestHarness#deployProcess.",
+      "defaultValue": "classpath:processes"
+    },
+    {
+      "name": "flowable.test.processes.deploy",
+      "type": "java.util.List<java.lang.String>",
+      "sourceType": "com.flowabletest.autoconfigure.deployment.FlowableTestProcessDeploymentAutoConfiguration",
+      "description": "Explicit, declared list of BPMN process file names (under flowable.test.processes.root) to deploy by default, replacing Flowable's own classpath scan. Absent, Flowable's own scan deploys every process file it finds, unchanged."
+    }
+  ],
+  "hints": [
+    {
+      "name": "flowable.test.datasource.provider",
+      "values": [
+        {"value": "auto", "description": "Prefer embedded-postgres when it's on the test classpath, otherwise H2."},
+        {"value": "h2", "description": "Force H2 even if embedded-postgres is on the classpath."},
+        {"value": "embedded-postgres", "description": "Require embedded-postgres explicitly."}
+      ]
+    },
+    {
+      "name": "flowable.test.datasource.embedded-postgres.instance-scope",
+      "values": [
+        {"value": "per-context", "description": "Fork a fresh native embedded-postgres process per Spring context (default)."},
+        {"value": "shared", "description": "Share one JVM-wide embedded-postgres process across contexts, each with its own logical database."}
+      ]
+    },
+    {
+      "name": "flowable.test.kafka.broker-scope",
+      "values": [
+        {"value": "shared", "description": "Reuse one JVM-wide embedded Kafka broker singleton across every Spring context (default)."},
+        {"value": "per-context", "description": "Start a fresh embedded Kafka broker for each Spring context."}
+      ]
+    }
+  ]
+}
