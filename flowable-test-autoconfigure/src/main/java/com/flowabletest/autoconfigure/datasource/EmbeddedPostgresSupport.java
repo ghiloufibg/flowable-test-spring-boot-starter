@@ -23,9 +23,9 @@ import javax.sql.DataSource;
  * <p>{@link #acquireLease()}/{@link #releaseLease()} track how many still-open Spring contexts
  * currently hold a lease on the shared server. A naive "close as soon as the count reaches zero"
  * policy would be wrong here: the server is meant to be reused indefinitely across many,
- * non-overlapping test contexts over the JVM's whole lifetime -- that is the entire point of
- * {@code shared} mode -- and the count legitimately drops to zero between one context's close and
- * the next context's first use. The count is instead consulted only once, by {@link
+ * non-overlapping test contexts over the JVM's whole lifetime -- that is the entire point of {@code
+ * shared} mode -- and the count legitimately drops to zero between one context's close and the next
+ * context's first use. The count is instead consulted only once, by {@link
  * #closeAfterOutstandingLeasesDrain}, when this class's own JVM shutdown hook fires at JVM exit;
  * see that method's Javadoc for why waiting on it there prevents a shutdown-hook race.
  */

@@ -16,8 +16,8 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
  * {@link FlowableTestKafkaEnvironmentPostProcessor} as an ordinary bean (for consumers who want
  * {@code @Autowired EmbeddedKafkaBroker}) and registers a {@link KafkaTestBridge} pointed at it.
  * Every bean here is additionally conditional on {@code spring.kafka.bootstrap-servers} actually
- * having been set by the post-processor; if no Kafka Event Registry channel descriptors were
- * found on the classpath, none of them activate.
+ * having been set by the post-processor; if no Kafka Event Registry channel descriptors were found
+ * on the classpath, none of them activate.
  */
 @AutoConfiguration
 @ConditionalOnClass(value = EmbeddedKafkaBroker.class, name = "org.flowable.engine.RuntimeService")
@@ -57,10 +57,10 @@ public class FlowableTestKafkaAutoConfiguration {
   }
 
   /**
-   * Exposes a {@code per-context} broker with {@code destroyMethod = "destroy"}: unlike the
-   * shared broker, a per-context broker ({@link EmbeddedFlowableKafkaSupport#startFresh}) has no
-   * JVM shutdown hook of its own, so letting Spring call {@code destroy()} when this context
-   * closes is its only cleanup path, not a double-destroy risk.
+   * Exposes a {@code per-context} broker with {@code destroyMethod = "destroy"}: unlike the shared
+   * broker, a per-context broker ({@link EmbeddedFlowableKafkaSupport#startFresh}) has no JVM
+   * shutdown hook of its own, so letting Spring call {@code destroy()} when this context closes is
+   * its only cleanup path, not a double-destroy risk.
    */
   @Bean(destroyMethod = "destroy")
   @ConditionalOnMissingBean

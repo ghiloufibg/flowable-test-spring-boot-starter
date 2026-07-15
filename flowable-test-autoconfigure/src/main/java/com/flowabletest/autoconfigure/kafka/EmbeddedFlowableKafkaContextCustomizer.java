@@ -18,12 +18,12 @@ import org.springframework.test.context.MergedContextConfiguration;
  * used rather than folding this into {@link FlowableTestKafkaEnvironmentPostProcessor} because an
  * {@code EnvironmentPostProcessor} has no visibility into the JUnit test class itself.
  *
- * <p>The embedded broker ({@link EmbeddedFlowableKafkaSupport}) is started at most once per JVM.
- * If it is already running -- started by the post-processor or an earlier test class -- {@code
- * partitions()} can no longer change the broker's own startup partition count, so only the
- * missing {@code additionalTopics()} are added to the running broker. If nothing has started the
- * broker yet, this customizer starts it itself using {@code additionalTopics()} as the initial
- * topic set and {@code partitions()} as the broker's partition count, then injects {@code
+ * <p>The embedded broker ({@link EmbeddedFlowableKafkaSupport}) is started at most once per JVM. If
+ * it is already running -- started by the post-processor or an earlier test class -- {@code
+ * partitions()} can no longer change the broker's own startup partition count, so only the missing
+ * {@code additionalTopics()} are added to the running broker. If nothing has started the broker
+ * yet, this customizer starts it itself using {@code additionalTopics()} as the initial topic set
+ * and {@code partitions()} as the broker's partition count, then injects {@code
  * spring.kafka.bootstrap-servers} the same way the post-processor would have.
  */
 record EmbeddedFlowableKafkaContextCustomizer(EmbeddedFlowableKafka annotation)

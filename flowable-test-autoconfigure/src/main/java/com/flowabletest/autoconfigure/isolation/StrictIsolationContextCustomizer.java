@@ -12,9 +12,9 @@ import org.springframework.util.ClassUtils;
 /**
  * {@link ContextCustomizer} that forces a {@code SEPARATE_CONTEXT}-isolated test class to never
  * share a cached {@code ApplicationContext} with any other test class. As a record, its {@code
- * equals}/{@code hashCode} are derived from {@link #testClassName}, which is always unique per
- * test class, so Spring's {@code TestContextCache} key never matches an existing entry and a
- * brand-new context is built every time.
+ * equals}/{@code hashCode} are derived from {@link #testClassName}, which is always unique per test
+ * class, so Spring's {@code TestContextCache} key never matches an existing entry and a brand-new
+ * context is built every time.
  *
  * <p>{@link #customizeContext} additionally guarantees the new context gets a genuinely separate
  * <em>database</em>, not just a separate {@code ProcessEngine}: the embedded-postgres provider

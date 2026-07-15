@@ -48,8 +48,7 @@ class ProcessTestHarnessEventTriggerTest {
 
   @Test
   void triggerSignalResumesTheWaitingExecution() {
-    final ProcessInstance instance =
-        runtimeService.startProcessInstanceByKey("signalCatchProcess");
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("signalCatchProcess");
     harness.awaitActivity(instance.getId(), "awaitApprovalSignal", Duration.ofSeconds(5));
 
     harness.triggerSignal("approvalSignal");

@@ -11,8 +11,8 @@ import org.springframework.test.context.TestExecutionListener;
 import org.springframework.util.ClassUtils;
 
 /**
- * Deploys the BPMN processes declared on {@code @FlowableProcessTest(processes = {...})}, on top
- * of whatever {@link FlowableTestProcessDeploymentAutoConfiguration}'s default allow-list already
+ * Deploys the BPMN processes declared on {@code @FlowableProcessTest(processes = {...})}, on top of
+ * whatever {@link FlowableTestProcessDeploymentAutoConfiguration}'s default allow-list already
  * deployed.
  *
  * <p>Implemented as a {@link TestExecutionListener} rather than a {@code ContextCustomizerFactory}
@@ -23,8 +23,8 @@ import org.springframework.util.ClassUtils;
  * with {@code isolation()}, read by {@code StrictIsolationContextCustomizerFactory} precisely
  * because it does need to affect the cache key).
  *
- * <p>{@link #beforeTestClass} calls {@code enableDuplicateFiltering()} on every deployment, which is
- * load-bearing rather than optional: this method fires every time, including every time Spring
+ * <p>{@link #beforeTestClass} calls {@code enableDuplicateFiltering()} on every deployment, which
+ * is load-bearing rather than optional: this method fires every time, including every time Spring
  * reuses a cached context across multiple classes declaring the same {@code processes()} -- without
  * it, each reuse would create a brand-new deployment and process-definition version for
  * byte-identical content.

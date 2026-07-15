@@ -10,21 +10,21 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
  * {@code destroy()} into a no-op, before {@link FlowableTestKafkaAutoConfiguration} hands the
  * broker to a Spring context.
  *
- * <p>{@code EmbeddedKafkaBroker} implements Spring's own {@code DisposableBean}, so {@code
- * @Bean(destroyMethod = "")} is not enough by itself: that attribute only disables destroy-method
- * inference, but {@code DisposableBeanAdapter} additionally invokes the {@code DisposableBean}
- * interface callback on any bean that implements it, unconditionally. Every Spring context that
- * autowires this shared broker would therefore call {@code destroy()} on it independently when
- * that context closes, and {@link EmbeddedFlowableKafkaSupport}'s own JVM shutdown hook -- the
- * broker's one true owner -- calls it a further time at JVM exit. {@code
+ * <p>{@code EmbeddedKafkaBroker} implements Spring's own {@code DisposableBean}, so
+ * {@code @Bean(destroyMethod = "")} is not enough by itself: that attribute only disables
+ * destroy-method inference, but {@code DisposableBeanAdapter} additionally invokes the {@code
+ * DisposableBean} interface callback on any bean that implements it, unconditionally. Every Spring
+ * context that autowires this shared broker would therefore call {@code destroy()} on it
+ * independently when that context closes, and {@link EmbeddedFlowableKafkaSupport}'s own JVM
+ * shutdown hook -- the broker's one true owner -- calls it a further time at JVM exit. {@code
  * EmbeddedKafkaKraftBroker#destroy()} has no idempotency guard, so a second or later call races an
  * already-torn-down {@code KafkaClusterTestKit}: a {@code RejectedExecutionException} from its
  * internal executor, then a {@code FileSystemException} deleting log segments already gone -- both
  * observed in practice, the second one specifically on Windows, where a half-deleted, still
  * memory-mapped log file turns the second close into a hard failure instead of a harmless no-op.
  *
- * <p>Every other interface method, including {@code afterPropertiesSet()}, is delegated
- * unchanged, so each context still observes the real broker's normal behavior.
+ * <p>Every other interface method, including {@code afterPropertiesSet()}, is delegated unchanged,
+ * so each context still observes the real broker's normal behavior.
  */
 final class SharedEmbeddedKafkaBrokerGuard {
 

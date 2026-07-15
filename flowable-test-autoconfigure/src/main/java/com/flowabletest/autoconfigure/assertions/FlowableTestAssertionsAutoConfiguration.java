@@ -20,9 +20,9 @@ import org.springframework.core.env.Environment;
 /**
  * Registers a {@link ProcessTestHarness} bean wrapping the consumer's own Flowable engine service
  * beans. Activates once a {@code ProcessEngine} bean exists and {@code RuntimeService} is on the
- * classpath, and backs off if the consumer already defines its own {@code ProcessTestHarness}
- * bean; unlike the Kafka and HTTP-mocking capabilities, there is no optional third-party
- * dependency to gate on here.
+ * classpath, and backs off if the consumer already defines its own {@code ProcessTestHarness} bean;
+ * unlike the Kafka and HTTP-mocking capabilities, there is no optional third-party dependency to
+ * gate on here.
  *
  * <p>Runs {@code afterName} both Flowable's own process-engine autoconfigurations and {@link
  * FlowableTestDiagnosticsAutoConfiguration}, so that when diagnostics is enabled its {@code

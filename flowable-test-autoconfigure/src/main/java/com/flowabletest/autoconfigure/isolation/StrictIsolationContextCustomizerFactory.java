@@ -9,9 +9,9 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.ContextCustomizerFactory;
 
 /**
- * {@link ContextCustomizerFactory} that activates {@link StrictIsolationContextCustomizer} for
- * test classes annotated with {@link FlowableProcessTest} whose {@link FlowableTestIsolation} is
- * {@code SEPARATE_CONTEXT}. Registered via {@code META-INF/spring.factories} under {@link
+ * {@link ContextCustomizerFactory} that activates {@link StrictIsolationContextCustomizer} for test
+ * classes annotated with {@link FlowableProcessTest} whose {@link FlowableTestIsolation} is {@code
+ * SEPARATE_CONTEXT}. Registered via {@code META-INF/spring.factories} under {@link
  * ContextCustomizerFactory}.
  */
 public final class StrictIsolationContextCustomizerFactory implements ContextCustomizerFactory {

@@ -34,10 +34,10 @@ import org.springframework.core.io.ClassPathResource;
  * rules out a concurrent {@code retain} observing a server this thread is in the middle of
  * stopping.
  *
- * <p>One case is intentionally never refcounted: a default-convention folder that every
- * referencing context always overrides via {@code @MockExternalService(stubs = ...)} is started
- * but never retained, so it is never released mid-run and instead lives until the JVM shutdown
- * hook that every started server registers.
+ * <p>One case is intentionally never refcounted: a default-convention folder that every referencing
+ * context always overrides via {@code @MockExternalService(stubs = ...)} is started but never
+ * retained, so it is never released mid-run and instead lives until the JVM shutdown hook that
+ * every started server registers.
  */
 final class EmbeddedFlowableHttpMockSupport {
 

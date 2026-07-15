@@ -11,18 +11,18 @@ import org.springframework.util.ClassUtils;
 
 /**
  * Starts and stops Flowable's inbound Kafka Event Registry consumer container(s) at Spring test
- * class boundaries, active only when {@code flowable.test.kafka.broker-scope=shared} (the
- * default; see {@link FlowableKafkaBrokerScopeCondition}).
+ * class boundaries, active only when {@code flowable.test.kafka.broker-scope=shared} (the default;
+ * see {@link FlowableKafkaBrokerScopeCondition}).
  *
  * <p>The shared broker is a JVM-wide singleton, and Spring's {@code TestContextCache} keeps every
  * distinct {@code ApplicationContext} it builds resident for the rest of the JVM's life. Without
- * this listener, two cached contexts' engines would both register as competing consumers -- in
- * the same hardcoded consumer group -- against the same broker. Stopping the previous class's
+ * this listener, two cached contexts' engines would both register as competing consumers -- in the
+ * same hardcoded consumer group -- against the same broker. Stopping the previous class's
  * containers before the next class's run begins prevents that; {@link #beforeTestClass}
  * idempotently restarts them if the next class reuses this same cached context.
  *
- * <p>Registered via {@code META-INF/spring.factories} under {@link TestExecutionListener}, so it
- * is unconditionally instantiated for every test using the Spring TestContext framework, including
+ * <p>Registered via {@code META-INF/spring.factories} under {@link TestExecutionListener}, so it is
+ * unconditionally instantiated for every test using the Spring TestContext framework, including
  * consumers of this starter with no Kafka on their classpath at all. {@link
  * #isSharedModeWithKafkaOnClasspath} guards both lifecycle callbacks against that case, and is
  * checked before either callback builds a lambda referencing {@link MessageListenerContainer}: the

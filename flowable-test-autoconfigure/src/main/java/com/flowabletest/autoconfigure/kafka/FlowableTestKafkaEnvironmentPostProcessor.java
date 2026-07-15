@@ -17,8 +17,8 @@ import org.springframework.util.ClassUtils;
  * {@link ConfigurableEnvironment} before the {@code ApplicationContext} refreshes. This has to
  * happen at the {@code EnvironmentPostProcessor} stage, not in a regular {@code @Bean}, because
  * Spring Kafka's auto-configured producer/consumer factories and Flowable's Kafka Event Registry
- * channels read {@code spring.kafka.bootstrap-servers} while they themselves are being created,
- * and same-context {@code @Bean} ordering cannot guarantee this class runs first.
+ * channels read {@code spring.kafka.bootstrap-servers} while they themselves are being created, and
+ * same-context {@code @Bean} ordering cannot guarantee this class runs first.
  *
  * <p>Ordered to run last ({@link Ordered#LOWEST_PRECEDENCE}) among environment post-processors, so
  * that {@code ConfigDataEnvironmentPostProcessor} has already loaded {@code application.yml}/{@code

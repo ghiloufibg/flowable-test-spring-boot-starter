@@ -11,9 +11,9 @@ import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 
 /**
- * Redirects specific services to an alternate stub folder for one test class, per the {@code
- * @MockExternalService} annotations passed in {@code overrides} — the per-test escape hatch from
- * the classpath-wide default mapping folder.
+ * Redirects specific services to an alternate stub folder for one test class, per the
+ * {@code @MockExternalService} annotations passed in {@code overrides} — the per-test escape hatch
+ * from the classpath-wide default mapping folder.
  *
  * <p>Implemented as a {@link ContextCustomizer} rather than as logic inside {@link
  * FlowableTestHttpStubEnvironmentPostProcessor} because an {@code EnvironmentPostProcessor} has no

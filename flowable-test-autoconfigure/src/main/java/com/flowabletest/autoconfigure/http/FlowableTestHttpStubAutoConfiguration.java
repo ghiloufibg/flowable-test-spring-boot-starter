@@ -22,21 +22,18 @@ import org.springframework.core.env.Environment;
  * MockExternalServiceContextCustomizer}) as regular Spring beans. Activates when {@link
  * WireMockServer} and {@code org.flowable.engine.RuntimeService} are both on the classpath.
  *
- * <p>{@code httpMockServers} resolves this context's final, override-applied service map via
- * {@link HttpMockServiceRegistry} and retains each entry, so a context with a {@code
- * @MockExternalService} override always sees the same server its {@code <name>.base-url} property
- * points at; resolving from the discovered map alone could disagree with an override applied later
- * in the same context. {@code httpMockServersReleaseListener} releases that exact same resolved
- * map when the context closes, bounding a server's lifetime to its last referencing context rather
- * than the whole JVM.
+ * <p>{@code httpMockServers} resolves this context's final, override-applied service map via {@link
+ * HttpMockServiceRegistry} and retains each entry, so a context with a {@code @MockExternalService}
+ * override always sees the same server its {@code <name>.base-url} property points at; resolving
+ * from the discovered map alone could disagree with an override applied later in the same context.
+ * {@code httpMockServersReleaseListener} releases that exact same resolved map when the context
+ * closes, bounding a server's lifetime to its last referencing context rather than the whole JVM.
  */
 @AutoConfiguration
 @ConditionalOnClass(value = WireMockServer.class, name = "org.flowable.engine.RuntimeService")
 public class FlowableTestHttpStubAutoConfiguration {
 
-  /**
-   * Resolves and retains this context's final set of HTTP mock servers, keyed by service name.
-   */
+  /** Resolves and retains this context's final set of HTTP mock servers, keyed by service name. */
   @Bean
   @ConditionalOnMissingBean
   HttpMockServers httpMockServers(Environment environment) {
@@ -59,12 +56,11 @@ public class FlowableTestHttpStubAutoConfiguration {
   }
 
   /**
-   * Invokes each {@link HttpStubConfigurer} bean once per discovered service, after the
-   * declarative JSON mappings are already loaded. Configurers only run the first time a given
-   * {@code WireMockServer} instance is seen ({@link
-   * EmbeddedFlowableHttpMockSupport#markConfiguredOnce}), not once per context that retains it, so
-   * a shared, JVM-lifetime server does not accumulate a duplicate stub registration from every
-   * context reusing it.
+   * Invokes each {@link HttpStubConfigurer} bean once per discovered service, after the declarative
+   * JSON mappings are already loaded. Configurers only run the first time a given {@code
+   * WireMockServer} instance is seen ({@link EmbeddedFlowableHttpMockSupport#markConfiguredOnce}),
+   * not once per context that retains it, so a shared, JVM-lifetime server does not accumulate a
+   * duplicate stub registration from every context reusing it.
    */
   @Bean
   InitializingBean httpStubConfigurerInvoker(

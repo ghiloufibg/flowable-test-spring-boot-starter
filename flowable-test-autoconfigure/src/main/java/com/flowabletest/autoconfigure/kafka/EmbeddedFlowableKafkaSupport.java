@@ -10,8 +10,8 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
  * Starts and owns the embedded Kafka broker(s) used by {@link
  * FlowableTestKafkaEnvironmentPostProcessor}. Deliberately not a Spring bean: it must be usable
  * from an {@code EnvironmentPostProcessor}, which runs before any {@code ApplicationContext}
- * exists. {@link FlowableTestKafkaAutoConfiguration} exposes the started instance as a regular
- * bean afterwards so consumers can {@code @Autowired EmbeddedKafkaBroker} directly.
+ * exists. {@link FlowableTestKafkaAutoConfiguration} exposes the started instance as a regular bean
+ * afterwards so consumers can {@code @Autowired EmbeddedKafkaBroker} directly.
  *
  * <p>Two independent start paths, selected by {@link FlowableKafkaBrokerScopeCondition}: {@link
  * #startIfNeeded(Set, int)} starts at most one JVM-wide singleton broker ({@code shared}, the
@@ -20,12 +20,12 @@ import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
  * broker back to the {@code @Bean} method that exposes it, relying on the post-processor and that
  * bean method running synchronously within the same context's refresh.
  *
- * <p>{@link #acquireLease()}/{@link #releaseLease()} count how many still-open Spring contexts
- * hold an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker. That count is consulted
- * only once, by {@link #closeAfterOutstandingLeasesDrain}, when the shutdown hook registered in
- * {@link #startIfNeeded} fires at JVM exit -- the broker is meant to be reused indefinitely across
- * many, non-overlapping test contexts for the JVM's whole lifetime, so it must not be torn down
- * simply because the count momentarily reaches zero between contexts. Kafka client shutdown paths
+ * <p>{@link #acquireLease()}/{@link #releaseLease()} count how many still-open Spring contexts hold
+ * an {@link EmbeddedKafkaSharedBrokerLease} on the shared broker. That count is consulted only
+ * once, by {@link #closeAfterOutstandingLeasesDrain}, when the shutdown hook registered in {@link
+ * #startIfNeeded} fires at JVM exit -- the broker is meant to be reused indefinitely across many,
+ * non-overlapping test contexts for the JVM's whole lifetime, so it must not be torn down simply
+ * because the count momentarily reaches zero between contexts. Kafka client shutdown paths
  * (producer close, consumer container stop) already tolerate an unreachable broker gracefully, so
  * this hardens the shared broker's shutdown against a class of race rather than fixing an observed
  * failure.

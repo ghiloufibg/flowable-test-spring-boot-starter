@@ -13,9 +13,9 @@ import org.springframework.core.type.AnnotatedTypeMetadata;
  * DataSource} beans in {@link FlowableTestDatasourceAutoConfiguration} activate: {@code
  * embedded-postgres} forces them on, {@code h2} forces them off even if {@code
  * io.zonky.test:embedded-postgres} is on the classpath, and the default {@code auto} prefers
- * Postgres whenever it's present. This condition only runs once the bean method's own {@code
- * @ConditionalOnClass(EmbeddedPostgres.class)} has already confirmed the library is present, so
- * {@code auto} matching here means exactly "use it because it's there". Any other property value
+ * Postgres whenever it's present. This condition only runs once the bean method's own
+ * {@code @ConditionalOnClass(EmbeddedPostgres.class)} has already confirmed the library is present,
+ * so {@code auto} matching here means exactly "use it because it's there". Any other property value
  * throws {@link IllegalStateException}.
  *
  * <p>That auto-preference silently flips every {@code @FlowableProcessTest} in the module from H2

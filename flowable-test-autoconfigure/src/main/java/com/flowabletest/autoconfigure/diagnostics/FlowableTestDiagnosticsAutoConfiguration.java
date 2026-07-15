@@ -25,8 +25,8 @@ import org.springframework.context.annotation.Bean;
  *
  * <p>Activates once a {@code ProcessEngine} bean exists, unless {@code
  * flowable.test.diagnostics.enabled} is set to {@code false} -- for consumers who have their own
- * failure-reporting tooling and consider this noise. Both beans back off individually via {@code
- * @ConditionalOnMissingBean} if the consumer already defines one. {@link
+ * failure-reporting tooling and consider this noise. Both beans back off individually via
+ * {@code @ConditionalOnMissingBean} if the consumer already defines one. {@link
  * FlowableProcessDiagnosticsExtension}, wired into {@code @FlowableProcessTest} directly, resolves
  * both beans defensively via {@code getIfAvailable()}, so disabling this auto-configuration (or a
  * context-refresh failure before it runs) simply means test failures go unenriched -- exactly as

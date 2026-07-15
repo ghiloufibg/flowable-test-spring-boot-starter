@@ -23,8 +23,8 @@ import org.springframework.util.ClassUtils;
  * may resolve that property while itself being created during context refresh.
  *
  * <p>This only handles the zero-code default path: scanning {@code
- * classpath:httpmocks/<name>/mappings/*.json} via {@link HttpMockDiscovery}. Per-test-class {@code
- * @MockExternalService} overrides are handled separately by {@link
+ * classpath:httpmocks/<name>/mappings/*.json} via {@link HttpMockDiscovery}. Per-test-class
+ * {@code @MockExternalService} overrides are handled separately by {@link
  * MockExternalServiceContextCustomizer}, which needs the Spring TestContext framework rather than
  * this environment-processing extension point because it must see the JUnit test class.
  *
