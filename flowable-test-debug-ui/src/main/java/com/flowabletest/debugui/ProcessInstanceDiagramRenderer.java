@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
 import org.flowable.bpmn.model.BpmnModel;
-import org.flowable.common.engine.api.FlowableIllegalArgumentException;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.RepositoryService;
@@ -44,9 +43,9 @@ final class ProcessInstanceDiagramRenderer {
   /**
    * Renders {@code processInstanceId}'s diagram as PNG bytes -- current activities highlighted
    * while active, unhighlighted once it has ended. Throws {@link UnknownProcessInstanceException}
-   * if the ID resolves in neither runtime nor history state, and lets {@link
-   * FlowableIllegalArgumentException} propagate unchanged if the process definition has no
-   * graphical notation to render -- both are handled by {@link DiagramImageHandler}.
+   * if the ID resolves in neither runtime nor history state, and {@link
+   * NoGraphicalNotationException} if the process definition has no {@code BPMNDI} section -- both
+   * are handled by {@link DiagramImageHandler}.
    */
   byte[] renderPng(String processInstanceId) {
     final ProcessInstance instance =
@@ -74,6 +73,9 @@ final class ProcessInstanceDiagramRenderer {
     }
 
     final BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
+    if (bpmnModel.getLocationMap().isEmpty()) {
+      throw new NoGraphicalNotationException(processDefinitionId);
+    }
     final ProcessDiagramGenerator generator =
         processEngine.getProcessEngineConfiguration().getProcessDiagramGenerator();
     try (InputStream png =

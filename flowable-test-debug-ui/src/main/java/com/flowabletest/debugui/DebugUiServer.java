@@ -13,8 +13,12 @@ import org.springframework.context.SmartLifecycle;
  * InetAddress#getLoopbackAddress()} -- never the bare-port constructor, which binds every network
  * interface -- so this is never reachable off the machine it runs on. Started/stopped with the
  * owning {@code ApplicationContext} via {@link SmartLifecycle}.
+ *
+ * <p>Public (unlike the handler classes it wires together, which stay package-private
+ * implementation detail): this is the one type a consumer legitimately autowires to assert against
+ * in their own tests, e.g. to confirm the debug UI actually came up on a given port.
  */
-final class DebugUiServer implements SmartLifecycle {
+public final class DebugUiServer implements SmartLifecycle {
 
   private static final Logger log = LoggerFactory.getLogger(DebugUiServer.class);
   private static final String INSTANCES_PATH_PREFIX = "/instances/";
@@ -78,7 +82,7 @@ final class DebugUiServer implements SmartLifecycle {
   }
 
   /** The actual bound port -- only meaningful once {@link #isRunning()}, resolves {@code 0}. */
-  int port() {
+  public int port() {
     return httpServer.getAddress().getPort();
   }
 }

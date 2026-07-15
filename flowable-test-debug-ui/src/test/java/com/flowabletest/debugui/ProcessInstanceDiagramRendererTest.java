@@ -39,7 +39,7 @@ class ProcessInstanceDiagramRendererTest {
   private ProcessInstanceDiagramRenderer renderer;
 
   @BeforeEach
-  void deployDiagramFixtureProcessAndCreateRenderer() {
+  void deployFixtureProcessesAndCreateRenderer() {
     if (repositoryService
             .createProcessDefinitionQuery()
             .processDefinitionKey("diagramFixtureProcess")
@@ -48,6 +48,16 @@ class ProcessInstanceDiagramRendererTest {
       repositoryService
           .createDeployment()
           .addClasspathResource("processes/diagram-fixture.bpmn20.xml")
+          .deploy();
+    }
+    if (repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey("noDiagramFixtureProcess")
+            .count()
+        == 0) {
+      repositoryService
+          .createDeployment()
+          .addClasspathResource("processes/no-diagram-fixture.bpmn20.xml")
           .deploy();
     }
     renderer =
@@ -82,5 +92,14 @@ class ProcessInstanceDiagramRendererTest {
   void throwsForAnUnknownProcessInstanceId() {
     assertThatThrownBy(() -> renderer.renderPng("does-not-exist"))
         .isInstanceOf(UnknownProcessInstanceException.class);
+  }
+
+  @Test
+  void throwsForAProcessDefinitionWithNoGraphicalNotation() {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey("noDiagramFixtureProcess");
+
+    assertThatThrownBy(() -> renderer.renderPng(instance.getId()))
+        .isInstanceOf(NoGraphicalNotationException.class);
   }
 }

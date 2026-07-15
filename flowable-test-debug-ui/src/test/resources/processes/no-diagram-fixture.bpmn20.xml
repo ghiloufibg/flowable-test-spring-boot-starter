@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowabletest.com/debugui">
+
+    <!-- Deliberately no BPMNDI section: proves ProcessInstanceDiagramRenderer's explicit
+         precondition check, not ProcessDiagramGenerator's own (nonexistent) one. -->
+    <process id="noDiagramFixtureProcess" name="No Diagram Fixture Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="reviewTask" />
+
+        <userTask id="reviewTask" name="Review" flowable:candidateGroups="reviewers" />
+        <sequenceFlow id="flow2" sourceRef="reviewTask" targetRef="endEvent" />
+
+        <endEvent id="endEvent" />
+    </process>
+</definitions>

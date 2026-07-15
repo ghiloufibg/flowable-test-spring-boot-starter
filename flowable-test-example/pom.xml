@@ -85,6 +85,15 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Opt-in, like the two above: never pulled in by flowable-test-spring-boot-starter's own
+             aggregator. Declaring this is what makes flowable.test.debug-ui.enabled=true available. -->
+        <dependency>
+            <groupId>com.flowabletest</groupId>
+            <artifactId>flowable-test-debug-ui</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Deliberately included so this module's tests exercise the starter's embedded-postgres
              auto-detection path (preferred automatically over H2 once present, see
              FlowableTestDatasourceAutoConfiguration) rather than only ever validating H2. -->
