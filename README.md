@@ -23,7 +23,9 @@ depends on this starter exactly like an external project would.
   - [Declarative HTTP mocking](#declarative-http-mocking)
   - [Process assertions / harness](#process-assertions--harness)
   - [BPMN failure diagnostics](#bpmn-failure-diagnostics)
+- [Configuration reference](#configuration-reference)
 - [Flowable version compatibility](#flowable-version-compatibility)
+- [Troubleshooting](#troubleshooting)
 - [Status](#status)
 
 ## Modules
@@ -221,6 +223,35 @@ duplicated in every Flowable test class:
 | Variables | `setVariables` |
 | Assertions (`assertThat(processInstanceId)`) | `hasEndedAt`, `isActive`, `isWaitingAt`, `hasNoTaskForCandidateGroup`, `hasVariable`, `hasVariables` |
 
+Waiting on an async step (a service task backed by a Kafka Event Registry send-event, a call
+activity, or any node that resolves off the calling thread) wakes on the engine's own events
+instead of sleeping a fixed interval, and fails fast — well before the timeout — if the async work
+throws and gets parked as a dead-letter job rather than silently burning the full wait:
+
+```java
+harness.awaitActivity(instance.getId(), "receiveShippingConfirmation", Duration.ofSeconds(5));
+harness.triggerMessage(instance.getId(), "shippingConfirmed");
+harness.awaitEnded(instance.getId(), Duration.ofSeconds(5));
+```
+
+`triggerSignal`/`triggerMessage` resume an execution waiting on the corresponding BPMN catch event;
+`forceTimerDue` skips a boundary/intermediate timer's real-world duration rather than the test
+waiting it out:
+
+```java
+harness.forceTimerDue(instance.getId(), "escalationTimer");
+harness.triggerSignal("orderCancelled"); // process-instance-agnostic: resumes every waiting instance
+```
+
+Assertions chain like any AssertJ assertion and resolve variables from live runtime state while the
+process instance is active, or from history once it has ended:
+
+```java
+harness.assertThat(instance.getId())
+    .hasEndedAt("endEventCompleted")
+    .hasVariables(Map.of("approved", true, "orderId", "abc-123"));
+```
+
 ### BPMN failure diagnostics
 
 Every `@FlowableProcessTest` failure — raised by the harness/assertions or by arbitrary test/delegate
@@ -264,6 +295,40 @@ feature relies on is a single Spring-scoped bean reset per test method, and a sh
 running test methods concurrently could see one method's reset race another's in-flight failure
 collection. Sequential execution (JUnit 5's default) is unaffected.
 
+## Configuration reference
+
+Every property below is namespaced under `flowable.test.*`. IDE autocomplete and inline
+descriptions work for all of them out of the box — `flowable-test-autoconfigure` ships typed
+metadata (`META-INF/spring-configuration-metadata.json`, generated from a `@ConfigurationProperties`
+record for the diagnostics group and hand-authored for the rest) that IntelliJ and VS Code's Spring
+tooling both pick up automatically, no consumer-side setup required.
+
+| Property | Default | Description |
+|---|---|---|
+| `flowable.test.datasource.provider` | `auto` | `auto` \| `h2` \| `embedded-postgres` — which `DataSource` backs the embedded engine. |
+| `flowable.test.datasource.embedded-postgres.instance-scope` | `per-context` | `per-context` \| `shared` — a native embedded-postgres process per Spring context, or one JVM-wide process with a logical database per context. |
+| `flowable.test.kafka.enabled` | `true` | Whether the embedded Kafka broker capability is active at all. |
+| `flowable.test.kafka.channel-location` | `classpath*:**/*.channel` | Classpath pattern scanned for Flowable Kafka Event Registry descriptors when auto-discovering topics. |
+| `flowable.test.kafka.partitions` | `1` | Partition count for every auto-discovered and additional Kafka topic. |
+| `flowable.test.kafka.broker-scope` | `shared` | `shared` \| `per-context` — one JVM-wide embedded broker singleton, or a fresh broker per Spring context. |
+| `flowable.test.http-mocks.enabled` | `true` | Whether declarative WireMock HTTP stubbing is active at all. |
+| `flowable.test.http-mocks.root` | `classpath:httpmocks` | Classpath root scanned for one WireMock mapping folder per immediate subfolder. |
+| `flowable.test.http-mocks.services` | *(discover every subfolder)* | Explicit, declared list of service names to start; a declared name with no matching `mappings` folder fails fast. |
+| `flowable.test.processes.root` | `classpath:processes` | Classpath root BPMN process file names resolve against. |
+| `flowable.test.processes.deploy` | *(Flowable's own classpath scan)* | Explicit, declared list of BPMN process file names to deploy by default. |
+| `flowable.test.diagnostics.enabled` | `true` | Whether BPMN failure diagnostics are active at all. |
+| `flowable.test.diagnostics.max-tracked-process-instances` | `50` | Cap on how many process instances a single failure runs full diagnostics queries against. |
+| `flowable.test.diagnostics.max-activity-trail-entries` | `20` | How many activity-trail entries a diagnostics snapshot includes. |
+| `flowable.test.diagnostics.max-variable-value-length` | `500` | How many characters of a rendered variable value a snapshot includes. |
+| `flowable.test.diagnostics.include-failed-jobs` | `true` | Whether a snapshot includes dead-letter job failures. |
+| `flowable.test.diagnostics.redacted-variable-names` | `password,token,secret,apikey,authorization,ssn` | Variable names (case-insensitive substring match) rendered as `[REDACTED]`. |
+
+A misspelled key under `flowable.test.diagnostics.*` specifically fails context refresh rather than
+silently keeping its default — see [Troubleshooting](#troubleshooting). The other properties above
+are read before the `ApplicationContext` exists (`EnvironmentPostProcessor`s and `Condition`s that
+decide which `DataSource`/broker/mock servers to start), so they can't be validated the same way;
+a typo there falls back to the property's default instead.
+
 ## Flowable version compatibility
 
 | Starter version | Supported Flowable range |
@@ -280,6 +345,48 @@ if it's outside it, rather than surfacing as an obscure `NoSuchMethodError` mid-
 CI (`.github/workflows/ci.yml`) runs the full test suite once per Flowable release at the ends of
 the supported range (currently `7.0.0` and `7.1.0`), so the range above is empirically verified on
 every push rather than just asserted.
+
+## Troubleshooting
+
+**A test unexpectedly uses embedded-postgres instead of H2 (or vice versa).**
+`flowable.test.datasource.provider` defaults to `auto`, which prefers embedded-postgres the moment
+`io.zonky.test:embedded-postgres` lands on the test classpath for *any* reason — even a single,
+unrelated test class needing it. The first time this happens, a one-time warning is logged naming
+the property. Set `flowable.test.datasource.provider` explicitly (`h2` or `embedded-postgres`) to
+stop the choice depending on which other test dependency happens to be present.
+
+**Context refresh fails with a Flowable version message before any test runs.**
+`FlowableCompatibilityGuardAutoConfiguration` checks the consumer's actual runtime
+`ProcessEngine.VERSION` against the supported range (see
+[Flowable version compatibility](#flowable-version-compatibility)) and fails fast with an
+actionable message rather than surfacing as an obscure `NoSuchMethodError` mid-test. Check which
+`org.flowable:flowable-spring-boot-starter` version your project actually resolves
+(`mvn dependency:tree`), not just what your own `pom.xml` declares.
+
+**A declared HTTP mock service or BPMN process fails before the context starts refreshing.**
+This is by design: `flowable.test.http-mocks.services` and `flowable.test.processes.deploy` are
+opt-in allow-lists, and a name declared there with no matching `mappings` folder or `.bpmn20.xml`
+file fails fast rather than silently deploying fewer services/processes than the test expects.
+Double-check the name — BPMN process **file** names and the `<process id="...">` declared inside
+them commonly differ by hyphenation (e.g. `order-processing.bpmn20.xml` vs `orderProcessing`).
+
+**Changing `@EmbeddedFlowableKafka(partitions = ...)` doesn't change a topic's partition count.**
+The embedded broker is a JVM-wide singleton by default (`flowable.test.kafka.broker-scope=shared`),
+started once per JVM. `partitions` only applies to that annotation's own `additionalTopics()` and
+cannot retroactively repartition a topic the Event Registry channel scan, or an earlier test class
+in the same JVM, already created. Use `broker-scope: per-context` if a test class genuinely needs a
+different partition count, at the cost of a fresh broker start per context.
+
+**A misspelled `flowable.test.diagnostics.*` property now fails context refresh.**
+This is intentional: that group binds through a typed `@ConfigurationProperties` record with
+`ignoreUnknownFields = false`, specifically so a typo fails loudly instead of silently keeping its
+default. Check the property name against the [Configuration reference](#configuration-reference)
+table.
+
+**Diagnostics tracking under JUnit 5 parallel test execution.**
+See the caveat at the end of [BPMN failure diagnostics](#bpmn-failure-diagnostics) — not currently
+verified under parallel execution within a shared Spring context. Sequential execution (JUnit 5's
+default) is unaffected.
 
 ## Status
 
