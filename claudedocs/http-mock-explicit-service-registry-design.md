@@ -3,7 +3,7 @@
 Date: 2026-07-14 (implemented 2026-07-14)
 Status: Implemented
 Relates to: `HttpMockDiscovery`, `FlowableTestHttpStubEnvironmentPostProcessor`,
-`EmbeddedFlowableHttpMockSupport`, `flowable-test-starter-design.md` section 4.3
+`EmbeddedFlowableHttpMockSupport`
 
 ## Problem
 

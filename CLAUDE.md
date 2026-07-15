@@ -11,10 +11,9 @@ library, not an application — every public API operates on generic Flowable pr
 (`RuntimeService`/`TaskService`/`HistoryService`, process instance IDs, activity IDs, candidate
 groups) and must never reference any consumer-project-specific domain type.
 
-The full design rationale (why `provided` scope, why WireMock's native format, why
-`EnvironmentPostProcessor`/`ContextCustomizerFactory` instead of plain `@Bean`s, version-isolation
-strategy) lives in `claudedocs/flowable-test-starter-design.md` — read it before changing module
-boundaries or the Flowable version-compatibility mechanism.
+The design rationale behind the module boundaries and the Flowable version-compatibility mechanism
+is documented inline below — see "Module architecture", "Why `EnvironmentPostProcessor`, not
+`@Bean`", and "Flowable version isolation" — read those before changing either.
 
 ## Build & test commands
 
@@ -108,7 +107,8 @@ hand-maintain an `@EmbeddedKafka(topics = {...})` list.
 `HttpMockDiscovery` scans `classpath:httpmocks/<service-name>/mappings/*.json` (configurable via
 `flowable.test.http-mocks.root`) for immediate subdirectories; each becomes one in-process WireMock
 server, with `<service-name>.base-url` injected into the environment. Uses WireMock's own native
-mapping JSON format rather than a custom schema — see design doc section 4.3 for why.
+mapping JSON format rather than a custom schema, so existing WireMock mapping files can be reused
+as-is and consumers already familiar with WireMock need no new schema to learn.
 
 ## Flowable version isolation (critical invariant)
 
@@ -117,19 +117,20 @@ as `provided` scope, **never** `compile`/`runtime`. This is deliberate and load-
 compiles the starter's code against Flowable's API but is not transitive, so the consumer's own
 `org.flowable:flowable-spring-boot-starter` is always the sole source of the engine at runtime —
 avoiding silent Maven "nearest wins" version mediation conflicts. Do not change this to `compile` or
-add Flowable as a bundled/shaded dependency; see design doc section 5.1 for the full rationale
-(including why shading specifically doesn't work here — the starter must interoperate with the
-consumer's own `RuntimeService`/`TaskService` bean instances by their real type).
+add Flowable as a bundled/shaded dependency: shading relocates classes to a different package, so a
+shaded `RuntimeService`/`TaskService` type would no longer be assignable to the consumer's own
+unshaded engine bean instances, breaking every `@Autowired RuntimeService` this starter's own API
+relies on.
 
 `flowable-test-autoconfigure` additionally declares `flowable-spring-boot-starter` as a `test`-scope
 dependency, pinned to `${flowable.version}` (currently 7.1.0) — this is only for the module's own
-internal validation test suite and never leaks to consumers (design doc section 5.5).
+internal validation test suite and never leaks to consumers.
 
 When bumping the supported Flowable range, update it in four places that must stay in sync:
 `flowable.supported.min`/`flowable.supported.maxExclusive` in the root `pom.xml`,
 `FlowableCompatibilityGuardAutoConfiguration.SUPPORTED_MIN_INCLUSIVE`/`SUPPORTED_MAX_EXCLUSIVE`, the
 README's compatibility table, and the `flowable-version` matrix in
-`.github/workflows/ci.yml` (oldest + newest supported release, design doc section 5.4) — CI runs
+`.github/workflows/ci.yml` (oldest + newest supported release) — CI runs
 the full test suite once per matrix entry via `mvn test -Dflowable.version=<version>`, which
 overrides the same `flowable.version` property used for both the `provided`-scope compile
 dependency and the module's own `test`-scope validation engine, so each entry proves the range is

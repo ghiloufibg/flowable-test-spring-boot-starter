@@ -3,8 +3,8 @@
 Date: 2026-07-13 (implemented 2026-07-14)
 Status: Implemented
 Relates to: `flowable-test-example/pom.xml:108-122`, `EmbeddedFlowableKafkaSupport`,
-`embedded-postgres-instance-scope-design.md` (same "one shared resource, many isolated contexts"
-goal, applied to Kafka instead of Postgres)
+`EmbeddedPostgresSupport` (same "one shared resource, many isolated contexts" goal, applied to
+Kafka instead of Postgres)
 
 ## Problem
 
@@ -49,8 +49,8 @@ was built to avoid.
 
 ## Why this is not the same shape as the Postgres problem
 
-`embedded-postgres-instance-scope-design.md` solves an analogous-looking problem for the DB by
-keeping one server process and handing each context a fresh, uniquely-named logical database. It
+`EmbeddedPostgresSupport`'s `shared` instance-scope mode solves an analogous-looking problem for the
+DB by keeping one server process and handing each context a fresh, uniquely-named logical database. It
 is tempting to want the same shape here — one broker, one uniquely-named logical Kafka "namespace"
 per context — but the two isolation units are not equivalent:
 
@@ -159,8 +159,8 @@ concern the singleton already handles transparently either way; JUnit 5's
 property with no classpath trace) — so rather than guess, the consumer states the tradeoff they
 want directly, exactly as `flowable.test.datasource.embedded-postgres.instance-scope` already does.
 
-**One honest caveat, not a precondition** (mirrors the equivalent note in
-`embedded-postgres-instance-scope-design.md`): `shared` mode's start-one/stop-the-other lifecycle
+**One honest caveat, not a precondition** (mirrors the equivalent caveat on `EmbeddedPostgresSupport`'s
+own `shared` instance-scope mode): `shared` mode's start-one/stop-the-other lifecycle
 assumes at most one context's tests execute at a time. That's true of this reactor today — no
 `forkCount`/`parallel` Surefire configuration and no `junit-platform.properties` file enabling
 JUnit 5 in-JVM parallelism exist anywhere in it (verified). Surefire's own `forkCount > 1` (separate

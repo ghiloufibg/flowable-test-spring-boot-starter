@@ -5,7 +5,7 @@ Merges two previously separate documents (`process-engine-test-isolation-design.
 the same two modules, and compose directly — Part C below covers exactly how they interact.
 
 Relates to: `HttpMockDiscovery`/`http-mock-explicit-service-registry-design.md` (the mechanism Part B
-mirrors), `EventRegistryChannelScanner`, `flowable-test-starter-design.md`.
+mirrors), `EventRegistryChannelScanner`.
 
 ## 0. Combined `@FlowableProcessTest` surface
 
