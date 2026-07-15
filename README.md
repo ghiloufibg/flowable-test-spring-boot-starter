@@ -22,6 +22,9 @@ depends on this starter exactly like an external project would.
 
 ## Getting started
 
+See [`docs/getting-started.md`](docs/getting-started.md) for a minimal setup walkthrough. The short
+version:
+
 ```xml
 <dependency>
     <groupId>com.flowabletest</groupId>
