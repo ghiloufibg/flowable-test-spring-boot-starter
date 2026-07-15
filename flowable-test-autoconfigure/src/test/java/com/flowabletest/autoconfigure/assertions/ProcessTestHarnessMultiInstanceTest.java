@@ -10,10 +10,8 @@ import java.util.List;
 import java.util.Map;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
-import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.task.api.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +28,6 @@ class ProcessTestHarnessMultiInstanceTest {
 
   @Autowired RepositoryService repositoryService;
   @Autowired RuntimeService runtimeService;
-  @Autowired TaskService taskService;
   @Autowired ProcessTestHarness harness;
 
   @BeforeEach
@@ -58,31 +55,17 @@ class ProcessTestHarnessMultiInstanceTest {
     assertThat(executions).hasSize(3);
     assertThat(harness.activeExecutionCount(instance.getId(), "reviewItemTask")).isEqualTo(3);
 
-    completeOneReviewTask(instance.getId());
+    harness.completeOneTaskForCandidateGroup(instance.getId(), "reviewers", Map.of());
 
     harness.awaitActivityCount(instance.getId(), "reviewItemTask", 2, Duration.ofSeconds(5));
     assertThat(harness.activeExecutionCount(instance.getId(), "reviewItemTask")).isEqualTo(2);
 
-    // Each completion must settle (the multi-instance parent execution's own bookkeeping update)
-    // before the next one starts -- completing two branches back-to-back with no await between
-    // them races that same parent execution row and can throw a FlowableOptimisticLockingException.
-    completeOneReviewTask(instance.getId());
+    harness.completeOneTaskForCandidateGroup(instance.getId(), "reviewers", Map.of());
     harness.awaitActivityCount(instance.getId(), "reviewItemTask", 1, Duration.ofSeconds(5));
 
-    completeOneReviewTask(instance.getId());
+    harness.completeOneTaskForCandidateGroup(instance.getId(), "reviewers", Map.of());
 
     harness.awaitEnded(instance.getId(), Duration.ofSeconds(5));
     harness.assertThat(instance.getId()).hasEndedAt("endEvent");
-  }
-
-  private void completeOneReviewTask(String processInstanceId) {
-    final Task task =
-        taskService
-            .createTaskQuery()
-            .processInstanceId(processInstanceId)
-            .taskCandidateGroup("reviewers")
-            .list()
-            .get(0);
-    taskService.complete(task.getId());
   }
 }

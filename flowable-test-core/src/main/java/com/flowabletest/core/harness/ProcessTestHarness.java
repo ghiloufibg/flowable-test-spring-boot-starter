@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.flowable.common.engine.api.FlowableOptimisticLockingException;
 import org.flowable.common.engine.api.delegate.event.AbstractFlowableEventListener;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
@@ -54,6 +55,14 @@ public final class ProcessTestHarness {
    * #currentActivityIds} excludes it.
    */
   private static final String SEQUENCE_FLOW_ACTIVITY_TYPE = "sequenceFlow";
+
+  /**
+   * How many times {@link #completeWithOptimisticLockRetry} retries a task completion rejected by
+   * {@link FlowableOptimisticLockingException} before giving up. Each retry re-attempts the whole
+   * command from scratch on a row-level conflict that is expected to resolve within a statement or
+   * two, not a fixed backoff -- five attempts is deliberately generous rather than tuned tight.
+   */
+  private static final int OPTIMISTIC_LOCK_RETRY_LIMIT = 5;
 
   /**
    * Engine event types that can plausibly change the outcome of a pending {@link #poll} call.
@@ -153,8 +162,68 @@ public final class ProcessTestHarness {
   public Task completeSingleTask(
       String processInstanceId, String candidateGroup, Map<String, Object> variables) {
     final Task task = findSingleTask(processInstanceId, candidateGroup);
-    taskService.complete(task.getId(), variables);
+    completeWithOptimisticLockRetry(task.getId(), variables, processInstanceId);
     return task;
+  }
+
+  /**
+   * Completes an arbitrary one of possibly several pending tasks for {@code candidateGroup} on
+   * {@code processInstanceId} -- the parallel-multi-instance counterpart of {@link
+   * #completeSingleTask}, which requires there to be exactly one. Fails loudly if there is no
+   * pending task for the group at all.
+   */
+  public Task completeOneTaskForCandidateGroup(
+      String processInstanceId, String candidateGroup, Map<String, Object> variables) {
+    final List<Task> tasks =
+        taskService
+            .createTaskQuery()
+            .processInstanceId(processInstanceId)
+            .taskCandidateGroup(candidateGroup)
+            .list();
+    if (tasks.isEmpty()) {
+      throw withDiagnostics(
+          new IllegalStateException(
+              "Expected at least one task with candidate group '"
+                  + candidateGroup
+                  + "' for process instance "
+                  + processInstanceId
+                  + " but found none"),
+          processInstanceId);
+    }
+    final Task task = tasks.get(0);
+    completeWithOptimisticLockRetry(task.getId(), variables, processInstanceId);
+    return task;
+  }
+
+  /**
+   * Retries {@code taskService.complete} up to {@link #OPTIMISTIC_LOCK_RETRY_LIMIT} times on {@link
+   * FlowableOptimisticLockingException}. Completing one branch of a parallel multi-instance
+   * activity updates a shared parent execution every other branch also updates, and Flowable's own
+   * async job executor already retries job-driven completions on this same exception internally --
+   * direct API calls like this one get no such retry for free, so the caller must provide it. Safe
+   * to retry unconditionally: a command that fails with this exception rolls back atomically, so
+   * nothing is left partially applied for the retry to double up on.
+   */
+  private void completeWithOptimisticLockRetry(
+      String taskId, Map<String, Object> variables, String processInstanceId) {
+    FlowableOptimisticLockingException lastFailure = null;
+    for (int attempt = 1; attempt <= OPTIMISTIC_LOCK_RETRY_LIMIT; attempt++) {
+      try {
+        taskService.complete(taskId, variables);
+        return;
+      } catch (final FlowableOptimisticLockingException e) {
+        lastFailure = e;
+      }
+    }
+    throw withDiagnostics(
+        new IllegalStateException(
+            "Failed to complete task <"
+                + taskId
+                + "> after "
+                + OPTIMISTIC_LOCK_RETRY_LIMIT
+                + " attempts, each rejected by a concurrent update to the same process instance",
+            lastFailure),
+        processInstanceId);
   }
 
   /**

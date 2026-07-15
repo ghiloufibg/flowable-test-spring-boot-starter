@@ -78,6 +78,19 @@ class ProcessTestHarnessTest {
    * harness directly rather than through the Spring-wired bean.
    */
   @Test
+  void completeOneTaskForCandidateGroupFailsLoudlyWhenNoTaskExistsForTheGroup() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    assertThatThrownBy(
+            () ->
+                harness.completeOneTaskForCandidateGroup(
+                    instance.getId(), "no-such-group", Map.of()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("no-such-group")
+        .hasMessageContaining("but found none");
+  }
+
+  @Test
   void deployProcessDeploysABpmnFileFromTheConfiguredProcessesRoot() {
     final ProcessTestHarness rootScopedHarness =
         new ProcessTestHarness(
