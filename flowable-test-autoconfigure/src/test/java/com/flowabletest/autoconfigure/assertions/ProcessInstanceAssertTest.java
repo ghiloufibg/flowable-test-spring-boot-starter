@@ -115,4 +115,27 @@ class ProcessInstanceAssertTest {
         .isInstanceOf(AssertionError.class)
         .hasMessageContaining("to be waiting at");
   }
+
+  @Test
+  void hasNoTaskForCandidateGroupFailsWithDiagnosticsWhenAPendingTaskMatches() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+
+    assertThatThrownBy(
+            () -> harness.assertThat(instance.getId()).hasNoTaskForCandidateGroup("reviewers"))
+        .isInstanceOf(AssertionError.class)
+        .hasMessageContaining("to have no task for candidate group <reviewers>");
+  }
+
+  /**
+   * Regression test: {@code hasNoTaskForCandidateGroup} must only count still-pending tasks, not
+   * every historic task that ever existed for the candidate group -- a completed "reviewers" task
+   * must not fail this assertion once nothing is left pending for that group.
+   */
+  @Test
+  void hasNoTaskForCandidateGroupPassesOnceTheOnlyMatchingTaskIsCompleted() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("helloProcess");
+    harness.completeSingleTask(instance.getId(), "reviewers", Map.of());
+
+    harness.assertThat(instance.getId()).hasNoTaskForCandidateGroup("reviewers");
+  }
 }

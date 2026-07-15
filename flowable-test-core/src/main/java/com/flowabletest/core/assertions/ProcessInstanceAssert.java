@@ -107,6 +107,7 @@ public final class ProcessInstanceAssert extends AbstractAssert<ProcessInstanceA
             .createHistoricTaskInstanceQuery()
             .processInstanceId(actual)
             .taskCandidateGroup(candidateGroup)
+            .unfinished()
             .count();
     if (historicTasks != 0) {
       failWithDiagnostics(
