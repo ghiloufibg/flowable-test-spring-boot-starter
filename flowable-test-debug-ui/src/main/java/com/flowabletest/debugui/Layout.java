@@ -54,6 +54,8 @@ final class Layout {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px 16px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
         }
         .flw-brand { display: flex; align-items: center; gap: 10px; font-size: 16px; }
@@ -173,11 +175,12 @@ final class Layout {
 
         .flw-tabs {
           display: flex; gap: 2px; border-bottom: 1px solid var(--flw-border); margin-bottom: 18px;
+          overflow-x: auto;
         }
         .flw-tab-btn {
           background: none; border: none; border-bottom: 3px solid transparent;
           padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--flw-text-secondary);
-          border-radius: 0; cursor: pointer;
+          border-radius: 0; cursor: pointer; white-space: nowrap; flex-shrink: 0;
         }
         .flw-tab-btn:hover { background: var(--flw-bg-muted); color: var(--flw-text); }
         .flw-tab-btn-active { color: var(--flw-teal); border-bottom-color: var(--flw-teal); }

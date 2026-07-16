@@ -142,6 +142,7 @@ final class InstanceDetailHandler implements HttpHandler {
               lightboxSrc: null,
               showDefinitionSource: false,
               definitionXml: null,
+              diagramFailed: false,
 
               init() {
                 const savedScroll = sessionStorage.getItem('flw-scroll');
@@ -195,12 +196,6 @@ final class InstanceDetailHandler implements HttpHandler {
 
               openLightbox(src) { this.lightboxSrc = src; },
               closeLightbox() { this.lightboxSrc = null; },
-
-              diagramError(img) {
-                const wrapper = img.parentElement;
-                wrapper.innerHTML = '<p class="flw-empty-state">No BPMN diagram available for this '
-                  + 'instance (missing graphical notation).</p>';
-              },
 
               filterVariables(query) {
                 const needle = query.trim().toLowerCase();
@@ -393,7 +388,11 @@ final class InstanceDetailHandler implements HttpHandler {
   private static String renderDiagram(String escapedId) {
     return """
         <img src="/instances/%s/diagram.png" alt="BPMN diagram" class="flw-diagram-img"
-             x-show="!showDefinitionSource" @click="openLightbox($el.src)" @error="diagramError($el)">
+             x-show="!showDefinitionSource && !diagramFailed"
+             @click="openLightbox($el.src)" @error="diagramFailed = true">
+        <p x-show="diagramFailed && !showDefinitionSource" class="flw-empty-state">
+          No BPMN diagram available for this instance (missing graphical notation).
+        </p>
         <pre x-show="showDefinitionSource" x-text="definitionXml || 'Loading…'" class="flw-definition-source"></pre>
         <p class="flw-diagram-hint">
           <span x-show="!showDefinitionSource">Click the diagram to enlarge. The current activity is highlighted.</span>
@@ -569,7 +568,10 @@ final class InstanceDetailHandler implements HttpHandler {
           .append("</span><span class=\"flw-badge flw-badge-error\">")
           .append(job.retries())
           .append(" retries left</span></div><div class=\"flw-failedjob-message\">")
-          .append(Html.escape(job.exceptionMessage()))
+          .append(
+              job.exceptionMessage() != null && !job.exceptionMessage().isBlank()
+                  ? Html.escape(job.exceptionMessage())
+                  : "(no exception message)")
           .append("</div>");
       if (job.exceptionStacktrace() != null && !job.exceptionStacktrace().isBlank()) {
         items
