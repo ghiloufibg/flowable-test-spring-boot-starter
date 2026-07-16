@@ -9,6 +9,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -96,6 +99,23 @@ class DebugUiServerEndpointTest {
 
     assertThat(response.statusCode()).isEqualTo(200);
     assertThat(response.headers().firstValue("Content-Type")).hasValue("image/png");
+  }
+
+  @Test
+  void handlesEachRequestOnItsOwnVirtualThread() throws Exception {
+    final AtomicBoolean ranOnVirtualThread = new AtomicBoolean(false);
+    final CountDownLatch taskRan = new CountDownLatch(1);
+
+    debugUiServer
+        .executor()
+        .execute(
+            () -> {
+              ranOnVirtualThread.set(Thread.currentThread().isVirtual());
+              taskRan.countDown();
+            });
+
+    assertThat(taskRan.await(2, TimeUnit.SECONDS)).isTrue();
+    assertThat(ranOnVirtualThread.get()).isTrue();
   }
 
   private HttpResponse<String> get(String path) throws Exception {

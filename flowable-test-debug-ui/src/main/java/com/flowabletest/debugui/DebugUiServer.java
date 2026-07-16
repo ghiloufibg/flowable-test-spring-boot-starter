@@ -4,6 +4,8 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -17,6 +19,13 @@ import org.springframework.context.SmartLifecycle;
  * <p>Public (unlike the handler classes it wires together, which stay package-private
  * implementation detail): this is the one type a consumer legitimately autowires to assert against
  * in their own tests, e.g. to confirm the debug UI actually came up on a given port.
+ *
+ * <p>Runs request handling on a virtual-thread-per-task executor rather than {@code HttpServer}'s
+ * own default, which -- absent an explicit {@code setExecutor()} call -- serializes every request
+ * onto the single thread {@link #start()} created. A single page load fires several concurrent
+ * fetches (the HTML, {@code diagram.png}, the vendored Alpine bundle, and on-demand {@code
+ * diagnostics.txt}/{@code definition.xml} calls); without a per-request thread those fetches queue
+ * up behind each other, and one slow diagnostics collection would stall every other open tab too.
  */
 public final class DebugUiServer implements SmartLifecycle {
 
@@ -64,6 +73,7 @@ public final class DebugUiServer implements SmartLifecycle {
     } catch (final IOException e) {
       throw new IllegalStateException("Failed to bind the Flowable Test debug UI's HTTP server", e);
     }
+    httpServer.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
     httpServer.createContext("/", instanceListHandler);
     httpServer.createContext("/static/", staticResourceHandler);
     httpServer.createContext(
@@ -101,5 +111,10 @@ public final class DebugUiServer implements SmartLifecycle {
   /** The actual bound port -- only meaningful once {@link #isRunning()}, resolves {@code 0}. */
   public int port() {
     return httpServer.getAddress().getPort();
+  }
+
+  /** Package-private: exists only so tests can assert on the request-handling executor. */
+  Executor executor() {
+    return httpServer.getExecutor();
   }
 }
