@@ -22,6 +22,10 @@ final class HttpResponses {
     send(exchange, 200, "image/png", png);
   }
 
+  static void sendXml(HttpExchange exchange, int statusCode, byte[] xml) throws IOException {
+    send(exchange, statusCode, "application/xml; charset=utf-8", xml);
+  }
+
   private static void send(HttpExchange exchange, int statusCode, String contentType, byte[] body)
       throws IOException {
     exchange.getResponseHeaders().add("Content-Type", contentType);

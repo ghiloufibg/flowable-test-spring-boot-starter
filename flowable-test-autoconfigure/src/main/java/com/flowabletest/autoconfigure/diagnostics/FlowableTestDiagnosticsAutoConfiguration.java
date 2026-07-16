@@ -7,6 +7,7 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
+import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -72,12 +73,14 @@ public class FlowableTestDiagnosticsAutoConfiguration {
       TaskService taskService,
       HistoryService historyService,
       ManagementService managementService,
+      RepositoryService repositoryService,
       FlowableTestDiagnosticsProperties properties) {
     return new ProcessDiagnosticsCollector(
         runtimeService,
         taskService,
         historyService,
         managementService,
+        repositoryService,
         properties.maxActivityTrailEntries(),
         properties.maxVariableValueLength(),
         properties.includeFailedJobs(),

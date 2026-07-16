@@ -56,9 +56,10 @@ public class FlowableTestDebugUiAutoConfiguration {
     return new DebugUiServer(
         properties,
         new InstanceListHandler(processInstanceTracker, processDiagnosticsCollector),
-        new InstanceDetailHandler(processDiagnosticsCollector),
+        new InstanceDetailHandler(processDiagnosticsCollector, processInstanceTracker),
         new DiagramImageHandler(diagramRenderer),
         new DiagnosticsTextHandler(processDiagnosticsCollector),
+        new DefinitionSourceHandler(processDiagnosticsCollector, repositoryService),
         new StaticResourceHandler(),
         applicationContext.getId());
   }

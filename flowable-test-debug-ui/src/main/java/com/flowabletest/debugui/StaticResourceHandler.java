@@ -14,9 +14,9 @@ import java.nio.charset.StandardCharsets;
  * traversal outside the {@code static/} classpath root is not a resolvable input in the first
  * place, rather than something checked after path resolution.
  *
- * <p>Every served file name embeds its exact vendored version (e.g. {@code
- * alpine-3.15.12.min.js}), so responses are cached aggressively and immutably -- a new version
- * gets a new file name, never a mutated response body under the same URL.
+ * <p>Every served file name embeds its exact vendored version (e.g. {@code alpine-3.15.12.min.js}),
+ * so responses are cached aggressively and immutably -- a new version gets a new file name, never a
+ * mutated response body under the same URL.
  */
 final class StaticResourceHandler implements HttpHandler {
 
@@ -25,7 +25,8 @@ final class StaticResourceHandler implements HttpHandler {
 
   @Override
   public void handle(HttpExchange exchange) throws IOException {
-    final String fileName = URI.create(exchange.getRequestURI().getPath()).getPath().substring(PATH_PREFIX.length());
+    final String fileName =
+        URI.create(exchange.getRequestURI().getPath()).getPath().substring(PATH_PREFIX.length());
     if (!fileName.matches("[A-Za-z0-9._-]+")) {
       HttpResponses.sendPlainText(exchange, 400, "Invalid static resource name <" + fileName + ">");
       return;

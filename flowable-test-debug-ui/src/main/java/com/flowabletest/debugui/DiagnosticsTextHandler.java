@@ -8,10 +8,10 @@ import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
 
 /**
- * {@code GET /instances/{id}/diagnostics.txt} -- the same plain-text rendering
- * {@link ProcessDiagnosticsFormatter} produces for a failed test's attached diagnostics, so the
- * debug UI and the on-failure output are always the same text instead of two independent
- * renderings drifting apart.
+ * {@code GET /instances/{id}/diagnostics.txt} -- the same plain-text rendering {@link
+ * ProcessDiagnosticsFormatter} produces for a failed test's attached diagnostics, so the debug UI
+ * and the on-failure output are always the same text instead of two independent renderings drifting
+ * apart.
  */
 final class DiagnosticsTextHandler implements HttpHandler {
 

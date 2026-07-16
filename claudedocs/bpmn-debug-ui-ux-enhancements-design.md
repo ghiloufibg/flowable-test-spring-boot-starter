@@ -1,8 +1,12 @@
 # Design: debug UI UX enhancements — benchmarked against Flowable's own UIs
 
-Date: 2026-07-16 (design only — not yet implemented)
-Status: Proposed — API surface verified against real `flowable-*-7.1.0` jars via `javap`; feature
-set grounded in Flowable's own published documentation (cited inline), not assumed
+Date: 2026-07-16
+Status: **Tiers 1, 2, and 3 all implemented and verified end to end in a real browser** (Tier 1 and
+the Alpine.js prototype shipped first; Tiers 2-3 — due date/priority/overdue, completed tasks,
+involved people, process definition metadata, the BPMN XML source tab, and parent/child instance
+links — implemented in one pass, also verified live). API surface verified against both ends of
+the supported Flowable range (`7.0.0` and `7.1.0`) via `javap`; feature set grounded in Flowable's
+own published documentation (cited inline), not assumed.
 Relates to: `flowable-test-debug-ui` (`Layout`, `InstanceListHandler`, `InstanceDetailHandler`),
 `ProcessDiagnosticsReport`, `ProcessDiagnosticsCollector` (`flowable-test-core`)
 
@@ -301,40 +305,53 @@ doc already carries for its own API surface.
 the HTML rendering in `flowable-test-debug-ui` and is **not** proposed to change shape — only to
 gain a second caller (the new `diagnostics.txt` route).
 
-## Risks and open questions
+## Risks and open questions (resolved during implementation)
 
-1. **`RepositoryService` is a new constructor dependency on `ProcessDiagnosticsCollector`.** Every
-   existing call site that constructs this class (`FlowableTestDiagnosticsAutoConfiguration`, and
-   this module's own test fixtures) needs updating — a mechanical but real breaking change to a
-   constructor signature, not just an additive one, unlike the record changes above.
-2. **Per-row `collect()` calls for the list-page grouping (Tier 1, #1) is O(N) engine queries for N
-   tracked instances.** Fine at typical single-test-method scale (a handful of instances), but
-   worth confirming there's no pathological test that tracks hundreds of instances in one method
-   before shipping this without a cap or lazy-expand-per-group UI.
-3. **`7.0.0` API compatibility is unverified.** All API verification above targeted `7.1.0` only;
-   the original design doc's own precedent requires checking both ends of
-   `[flowable.supported.min, flowable.supported.maxExclusive)` before implementation, not just the
-   version currently checked out locally.
-4. **Parent/child linkage (Tier 3, #11) — checked, not just assumed.** `ProcessInstanceTracker`
-   registers as a `FlowableEventListener` on the engine's own event dispatcher for
-   `PROCESS_STARTED` globally (see its class Javadoc and `onEvent`), not just instances the test
-   thread explicitly calls `startProcessInstanceByKey` for — so a call-activity-spawned child
-   instance fires the same engine-level event and is already tracked, up to
-   `maxTrackedProcessInstances`. The "spawned instances" link can safely cross-reference the
-   tracker's own list rather than needing a separate engine query. The one residual edge case: a
-   test that starts enough instances to hit the cap could have an untracked (and thus unlinkable)
-   child — same limitation `omittedProcessInstanceCount()` already surfaces for the plain instance
-   list today.
-5. **Zero code and zero tests exist for any of this** — same caveat the original design doc states
-   for itself: this is a paper design grounded in checked facts, not a validated implementation.
+1. **Resolved.** `RepositoryService` is now a constructor dependency on `ProcessDiagnosticsCollector`.
+   All five call sites (`FlowableTestDiagnosticsAutoConfiguration` plus four test files in
+   `flowable-test-autoconfigure`) were updated; all already had `RepositoryService` autowired for
+   other reasons, so no new test wiring was needed.
+2. **Not yet mitigated, still a real limitation.** Both the list-page grouping (Tier 1) and
+   parent/child lookup (Tier 3, #11) are O(N) `collect()` calls for N tracked instances. Still fine
+   at typical single-test-method scale; no cap or lazy-expand UI added. Revisit if a real test
+   suite tracking hundreds of instances per method surfaces this as a real slowdown.
+3. **Resolved.** Every API used by Tier 2/3 was re-verified against `flowable-*-7.0.0` jars via
+   `javap` (`TaskInfo`, `HistoricTaskInstance`, `IdentityLinkType`, `RepositoryService`,
+   `ProcessDefinition`, `EngineDeployment`, `HistoricProcessInstance`,
+   `ProcessInstanceQuery.superProcessInstanceId`) — identical signatures at both ends of the
+   supported range.
+4. **Confirmed correct in code, not yet exercised live.** The `ProcessInstanceTracker`
+   global-event-listener reasoning held up in code review, but no call-activity fixture exists in
+   this module's test resources to exercise it end to end in the browser (only in the passing
+   automated test suite, which doesn't cover parent/child rendering specifically). Worth adding a
+   call-activity fixture if this feature needs stronger confidence later.
+5. **Resolved.** Fully implemented, compiled, and verified live in a browser (see "Verification
+   note" below) — no longer a paper design.
 
-## Suggested implementation order
+## Suggested implementation order (all done)
 
-1. Tier 1, items 1–5 — no core-module risk, immediately shippable, delivers most of the
-   "feels more engaging" ask on its own.
-2. Tier 2, item 6 (due date/priority/overdue) — smallest core change, highest debugging value
-   (an overdue task is often exactly why a test hung).
-3. Tier 2, items 7–9, together — since all three need the same `RepositoryService` constructor
-   change identified in risk #1, batching them avoids touching that constructor twice.
-4. Tier 3, item 10 (BPMN source tab) — independent of the Tier 2 batch, can ship in parallel.
-5. Tier 3, item 11 (parent/child links) — last, once risk #4 above is resolved.
+1. ~~Tier 1, items 1–5~~ — shipped first (list grouping, relative time, keyboard shortcuts, copy
+   diagnostics, toast/transitions), followed by the Alpine.js prototype (see "Frontend tooling"
+   above).
+2. ~~Tier 2, item 6 (due date/priority/overdue)~~ — `PendingTaskInfo` gained `dueDate`, `priority`;
+   the detail page renders a red "overdue" badge when the due date is in the past.
+3. ~~Tier 2, items 7–9~~ — implemented together against the same new `RepositoryService`
+   constructor dependency on `ProcessDiagnosticsCollector`, exactly as risk #1 anticipated:
+   completed tasks (new `Tasks` tab), full identity links beyond candidate groups (owner,
+   participant, candidate *users* — not just groups), and process definition name/category/
+   deployment time in the header.
+4. ~~Tier 3, item 10 (BPMN source tab)~~ — a toggle inside the existing Diagram tab (not a
+   separate tab), lazy-fetched from the new `GET /instances/{id}/definition.xml` route on first
+   click.
+5. ~~Tier 3, item 11 (parent/child links)~~ — `superProcessInstanceId` surfaced on the report;
+   child instances found by cross-referencing `ProcessInstanceTracker`'s tracked list, confirmed
+   safe by risk #4's code-level check (below).
+
+**Verification note**: every feature above was confirmed in a real running browser session (not
+just compiled/tested) — the overdue badge, priority, due date, and identity-link badges (including
+the "candidate user vs. candidate group" distinction, which needed a follow-up fix after the first
+pass silently dropped candidate-user links), the process definition subtitle and deployed time, the
+BPMN XML source toggle fetching real deployed XML, and the Completed tasks tab rendering a real
+completed task's duration and status. Parent/child lineage rendering was verified by code review and
+the passing test suite rather than a live call-activity scenario, since no such fixture exists in
+this module's test resources yet.

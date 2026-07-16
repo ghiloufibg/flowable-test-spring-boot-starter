@@ -57,7 +57,15 @@ class ProcessInstanceAssertTest {
 
     final ProcessDiagnosticsCollector brokenCollector =
         new ProcessDiagnosticsCollector(
-            null, taskService, historyService, managementService, 20, 500, true, List.of());
+            null,
+            taskService,
+            historyService,
+            managementService,
+            repositoryService,
+            20,
+            500,
+            true,
+            List.of());
     final ProcessInstanceAssert brokenAssert =
         new ProcessInstanceAssert(
             instance.getId(), runtimeService, historyService, brokenCollector);

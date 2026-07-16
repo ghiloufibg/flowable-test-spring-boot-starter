@@ -161,6 +161,10 @@ final class Layout {
         .flw-meta-value { display: flex; align-items: center; gap: 8px; }
         .flw-meta-value button { padding: 2px 8px; font-size: 11px; }
         .flw-current-activities { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+        .flw-detail-subtitle { margin: 6px 0 0; color: var(--flw-text-secondary); font-size: 13px; }
+        .flw-lineage { margin-top: 14px; font-size: 13px; }
+        .flw-lineage-row { color: var(--flw-text-secondary); margin-top: 4px; }
+        .flw-definition-source { max-height: 480px; overflow-y: auto; white-space: pre-wrap; text-align: left; }
 
         .flw-refresh-indicator {
           display: flex; align-items: center; gap: 8px; font-size: 12px; color: #b0b8bf;

@@ -4,8 +4,11 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityTrailEntry;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.CompletedTaskInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.FailedJobInfo;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.IdentityLinkInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.PendingTaskInfo;
+import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import java.io.IOException;
@@ -15,25 +18,33 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@code GET /instances/{id}} -- diagram, variables, current activities, pending tasks, activity
- * trail, and failed jobs for one process instance, all sourced from {@link
- * ProcessDiagnosticsCollector#collect(String)} rather than re-querying the engine.
+ * {@code GET /instances/{id}} -- process definition metadata, diagram, variables, pending and
+ * completed tasks, activity trail, and failed jobs for one process instance, all sourced from
+ * {@link ProcessDiagnosticsCollector#collect(String)} rather than re-querying the engine directly.
+ * Parent/spawned-instance links are the one piece of data that needs more than a single {@code
+ * collect()} call: {@link ProcessInstanceTracker#trackedProcessInstanceIds()} is scanned and each
+ * tracked instance's own report consulted for a matching {@code superProcessInstanceId} (see {@code
+ * claudedocs/bpmn-debug-ui-ux-enhancements-design.md}, Tier 3 item 11).
  *
- * <p><b>Alpine.js prototype</b> (see {@code claudedocs/bpmn-debug-ui-ux-enhancements-design.md},
- * "Frontend tooling"): the interactive chrome (tabs, toast, lightbox, refresh countdown/pause,
- * keyboard shortcuts) is driven by a vendored Alpine.js build ({@code
+ * <p><b>Alpine.js prototype</b> (see the same design doc, "Frontend tooling"): the interactive
+ * chrome (tabs, toast, lightbox, refresh countdown/pause, keyboard shortcuts, the
+ * diagram/XML-source toggle) is driven by a vendored Alpine.js build ({@code
  * /static/alpine-3.15.12.min.js}) instead of hand-rolled DOM manipulation, evaluated side by side
- * against {@link InstanceListHandler}'s plain-vanilla-JS list page. All process data below is
- * still rendered server-side exactly as before -- only the interactivity layer changed.
+ * against {@link InstanceListHandler}'s plain-vanilla-JS list page. All process data below is still
+ * rendered server-side exactly as before -- only the interactivity layer changed.
  */
 final class InstanceDetailHandler implements HttpHandler {
 
   private static final String PATH_PREFIX = "/instances/";
 
   private final ProcessDiagnosticsCollector processDiagnosticsCollector;
+  private final ProcessInstanceTracker processInstanceTracker;
 
-  InstanceDetailHandler(ProcessDiagnosticsCollector processDiagnosticsCollector) {
+  InstanceDetailHandler(
+      ProcessDiagnosticsCollector processDiagnosticsCollector,
+      ProcessInstanceTracker processInstanceTracker) {
     this.processDiagnosticsCollector = processDiagnosticsCollector;
+    this.processInstanceTracker = processInstanceTracker;
   }
 
   @Override
@@ -46,10 +57,29 @@ final class InstanceDetailHandler implements HttpHandler {
           exchange, 404, "No process instance found for ID <" + processInstanceId + ">");
       return;
     }
-    HttpResponses.sendHtml(exchange, 200, renderPage(processInstanceId, report));
+    final List<String> childInstanceIds = childInstanceIds(processInstanceId);
+    HttpResponses.sendHtml(exchange, 200, renderPage(processInstanceId, report, childInstanceIds));
   }
 
-  private static String renderPage(String processInstanceId, ProcessDiagnosticsReport report) {
+  /**
+   * Every other tracked instance (started during the same test method, see {@link
+   * ProcessInstanceTracker}) whose {@code superProcessInstanceId} points back at {@code
+   * processInstanceId} -- i.e. every call-activity-spawned child. One {@code collect()} call per
+   * tracked instance; accepted at the scale a single test method tracks (see the design doc's
+   * "Risks" section).
+   */
+  private List<String> childInstanceIds(String processInstanceId) {
+    return processInstanceTracker.trackedProcessInstanceIds().stream()
+        .filter(id -> !id.equals(processInstanceId))
+        .filter(
+            id ->
+                processInstanceId.equals(
+                    processDiagnosticsCollector.collect(id).superProcessInstanceId()))
+        .toList();
+  }
+
+  private static String renderPage(
+      String processInstanceId, ProcessDiagnosticsReport report, List<String> childInstanceIds) {
     final String escapedId = Html.escape(processInstanceId);
     return """
         <!doctype html>
@@ -72,16 +102,20 @@ final class InstanceDetailHandler implements HttpHandler {
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'diagram' }" @click="activeTab = 'diagram'">Diagram</button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'variables' }" @click="activeTab = 'variables'">Variables<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'tasks' }" @click="activeTab = 'tasks'">Pending tasks<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'completed' }" @click="activeTab = 'completed'">Completed tasks<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'history' }" @click="activeTab = 'history'">Activity trail<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'failedjobs' }" @click="activeTab = 'failedjobs'">Failed jobs<span class="flw-tab-count">%d</span></button>
           </div>
-          <div x-show="activeTab === 'diagram'" x-transition class="flw-card">
+          <div x-show="activeTab === 'diagram'" x-transition class="flw-card flw-diagram-card">
             %s
           </div>
           <div x-show="activeTab === 'variables'" x-transition class="flw-card">
             %s
           </div>
           <div x-show="activeTab === 'tasks'" x-transition class="flw-card">
+            %s
+          </div>
+          <div x-show="activeTab === 'completed'" x-transition class="flw-card">
             %s
           </div>
           <div x-show="activeTab === 'history'" x-transition class="flw-card">
@@ -106,6 +140,8 @@ final class InstanceDetailHandler implements HttpHandler {
               toastVisible: false,
               toastTimeout: null,
               lightboxSrc: null,
+              showDefinitionSource: false,
+              definitionXml: null,
 
               init() {
                 const savedScroll = sessionStorage.getItem('flw-scroll');
@@ -145,6 +181,16 @@ final class InstanceDetailHandler implements HttpHandler {
                     this.toast('Diagnostics copied to clipboard');
                   })
                   .catch(() => this.toast('Failed to copy diagnostics'));
+              },
+
+              toggleDefinitionSource(processInstanceId) {
+                this.showDefinitionSource = !this.showDefinitionSource;
+                if (this.showDefinitionSource && this.definitionXml === null) {
+                  fetch('/instances/' + processInstanceId + '/definition.xml')
+                    .then((response) => response.text())
+                    .then((text) => { this.definitionXml = text; })
+                    .catch(() => { this.definitionXml = 'Failed to load BPMN source.'; });
+                }
               },
 
               openLightbox(src) { this.lightboxSrc = src; },
@@ -192,8 +238,8 @@ final class InstanceDetailHandler implements HttpHandler {
                   this.$nextTick(() => document.querySelector('#flw-tab-variables input[type="search"]')?.focus());
                 } else if (event.key === 'r') {
                   location.reload();
-                } else if (['1', '2', '3', '4', '5'].includes(event.key)) {
-                  this.activeTab = ['diagram', 'variables', 'tasks', 'history', 'failedjobs'][Number(event.key) - 1];
+                } else if (['1', '2', '3', '4', '5', '6'].includes(event.key)) {
+                  this.activeTab = ['diagram', 'variables', 'tasks', 'completed', 'history', 'failedjobs'][Number(event.key) - 1];
                 }
               },
             };
@@ -208,14 +254,16 @@ final class InstanceDetailHandler implements HttpHandler {
             Layout.STYLE,
             Layout.topBar(refreshIndicatorMarkup()),
             escapedId,
-            renderHeader(escapedId, report),
+            renderHeader(escapedId, report, childInstanceIds),
             report.variables().size(),
             report.pendingTasks().size(),
+            report.completedTasks().size(),
             report.activityTrail().size(),
             report.failedJobs().size(),
             renderDiagram(escapedId),
             renderVariables(report.variables()),
             renderTasks(report.pendingTasks()),
+            renderCompletedTasks(report.completedTasks()),
             renderActivityTrail(report.activityTrail()),
             renderFailedJobs(report.failedJobs()));
   }
@@ -229,13 +277,15 @@ final class InstanceDetailHandler implements HttpHandler {
         """;
   }
 
-  private static String renderHeader(String escapedId, ProcessDiagnosticsReport report) {
+  private static String renderHeader(
+      String escapedId, ProcessDiagnosticsReport report, List<String> childInstanceIds) {
     return """
         <div class="flw-card flw-detail-header">
           <div class="flw-detail-title">
             <span class="flw-badge %s">%s</span>
             <h1>%s <span class="flw-version">v%s</span></h1>
           </div>
+          %s
           <div class="flw-meta-row">
             <div>
               <span class="flw-meta-label">Instance ID</span>
@@ -245,7 +295,12 @@ final class InstanceDetailHandler implements HttpHandler {
               <span class="flw-meta-label">Business key</span>
               <div class="flw-meta-value">%s</div>
             </div>
+            <div>
+              <span class="flw-meta-label">Deployed</span>
+              <div class="flw-meta-value">%s</div>
+            </div>
           </div>
+          %s
           %s
         </div>
         """
@@ -254,10 +309,67 @@ final class InstanceDetailHandler implements HttpHandler {
             report.active() ? "&#9679; Active" : "Ended",
             Html.escape(report.processDefinitionKey()),
             report.processDefinitionVersion(),
+            renderDefinitionSubtitle(report),
             escapedId,
             escapedId,
             report.businessKey() != null ? Html.escape(report.businessKey()) : "&mdash;",
+            renderTimeOrDash(report.deploymentTime()),
+            renderLineage(report, childInstanceIds),
             renderCurrentActivities(report.currentActivities()));
+  }
+
+  private static String renderDefinitionSubtitle(ProcessDiagnosticsReport report) {
+    if (report.processDefinitionName() == null && report.processDefinitionCategory() == null) {
+      return "";
+    }
+    final StringBuilder subtitle = new StringBuilder("<p class=\"flw-detail-subtitle\">");
+    if (report.processDefinitionName() != null) {
+      subtitle.append(Html.escape(report.processDefinitionName()));
+    }
+    if (report.processDefinitionCategory() != null) {
+      if (report.processDefinitionName() != null) {
+        subtitle.append(" &middot; ");
+      }
+      subtitle.append("category: ").append(Html.escape(report.processDefinitionCategory()));
+    }
+    return subtitle.append("</p>").toString();
+  }
+
+  private static String renderLineage(
+      ProcessDiagnosticsReport report, List<String> childInstanceIds) {
+    if (report.superProcessInstanceId() == null && childInstanceIds.isEmpty()) {
+      return "";
+    }
+    final StringBuilder lineage = new StringBuilder("<div class=\"flw-lineage\">");
+    if (report.superProcessInstanceId() != null) {
+      lineage
+          .append("<div class=\"flw-lineage-row\">Part of instance: ")
+          .append(renderInstanceLink(report.superProcessInstanceId()))
+          .append("</div>");
+    }
+    if (!childInstanceIds.isEmpty()) {
+      lineage.append("<div class=\"flw-lineage-row\">Spawned instances: ");
+      for (int i = 0; i < childInstanceIds.size(); i++) {
+        if (i > 0) {
+          lineage.append(", ");
+        }
+        lineage.append(renderInstanceLink(childInstanceIds.get(i)));
+      }
+      lineage.append("</div>");
+    }
+    return lineage.append("</div>").toString();
+  }
+
+  private static String renderInstanceLink(String processInstanceId) {
+    final String escaped = Html.escape(processInstanceId);
+    return "<a href=\"/instances/" + escaped + "\" class=\"flw-mono\">" + escaped + "</a>";
+  }
+
+  private static String renderTimeOrDash(Instant instant) {
+    if (instant == null) {
+      return "&mdash;";
+    }
+    return "<time datetime=\"" + instant + "\">" + instant + "</time>";
   }
 
   private static String renderCurrentActivities(List<ActivityInfo> activities) {
@@ -268,7 +380,11 @@ final class InstanceDetailHandler implements HttpHandler {
     for (final ActivityInfo activity : activities) {
       badges
           .append("<span class=\"flw-badge flw-badge-neutral\">&#9654; ")
-          .append(Html.escape(activity.activityName() != null ? activity.activityName() : activity.activityId()))
+          .append(
+              Html.escape(
+                  activity.activityName() != null
+                      ? activity.activityName()
+                      : activity.activityId()))
           .append("</span>");
     }
     return badges.append("</div>").toString();
@@ -277,10 +393,14 @@ final class InstanceDetailHandler implements HttpHandler {
   private static String renderDiagram(String escapedId) {
     return """
         <img src="/instances/%s/diagram.png" alt="BPMN diagram" class="flw-diagram-img"
-             @click="openLightbox($el.src)" @error="diagramError($el)">
-        <p class="flw-diagram-hint">Click the diagram to enlarge. The current activity is highlighted.</p>
+             x-show="!showDefinitionSource" @click="openLightbox($el.src)" @error="diagramError($el)">
+        <pre x-show="showDefinitionSource" x-text="definitionXml || 'Loading…'" class="flw-definition-source"></pre>
+        <p class="flw-diagram-hint">
+          <span x-show="!showDefinitionSource">Click the diagram to enlarge. The current activity is highlighted.</span>
+          <button @click="toggleDefinitionSource('%s')" x-text="showDefinitionSource ? 'View diagram' : 'View BPMN XML source'"></button>
+        </p>
         """
-        .formatted(escapedId);
+        .formatted(escapedId, escapedId);
   }
 
   private static String renderVariables(Map<String, String> variables) {
@@ -313,9 +433,11 @@ final class InstanceDetailHandler implements HttpHandler {
     if (tasks.isEmpty()) {
       return "<p class=\"flw-empty-state\">No pending user tasks.</p>";
     }
+    final Instant now = Instant.now();
     final StringBuilder items = new StringBuilder();
     for (final PendingTaskInfo task : tasks) {
       final String candidateGroups = String.join(", ", task.candidateGroups());
+      final boolean overdue = task.dueDate() != null && task.dueDate().isBefore(now);
       items
           .append("<div class=\"flw-task-card\"><div class=\"flw-task-name\">")
           .append(Html.escape(task.name()))
@@ -327,7 +449,75 @@ final class InstanceDetailHandler implements HttpHandler {
                   ? ""
                   : "<span class=\"flw-badge flw-badge-neutral\">groups: "
                       + Html.escape(candidateGroups)
-                      + "</span>")
+                      + "</span> ")
+          .append("<span class=\"flw-badge flw-badge-neutral\">priority: ")
+          .append(task.priority())
+          .append("</span> ")
+          .append(renderDueDateBadge(task.dueDate(), overdue))
+          .append(renderOtherIdentityLinks(task.identityLinks()))
+          .append("</div>");
+    }
+    return items.toString();
+  }
+
+  private static String renderDueDateBadge(Instant dueDate, boolean overdue) {
+    if (dueDate == null) {
+      return "";
+    }
+    return (overdue
+            ? "<span class=\"flw-badge flw-badge-error\">overdue, due "
+            : "<span class=\"flw-badge flw-badge-neutral\">due ")
+        + "<time datetime=\""
+        + dueDate
+        + "\">"
+        + dueDate
+        + "</time></span> ";
+  }
+
+  private static String renderOtherIdentityLinks(List<IdentityLinkInfo> identityLinks) {
+    final StringBuilder badges = new StringBuilder();
+    for (final IdentityLinkInfo link : identityLinks) {
+      // Assignee and candidate-group links already have their own dedicated badges above --
+      // everything else (candidate *users*, owner, participant, starter, ...) shows up here.
+      final boolean alreadyShown =
+          "assignee".equals(link.type()) || ("candidate".equals(link.type()) && link.groupId() != null);
+      if (alreadyShown) {
+        continue;
+      }
+      final String who = link.userId() != null ? link.userId() : link.groupId();
+      if (who == null) {
+        continue;
+      }
+      badges
+          .append("<span class=\"flw-badge flw-badge-neutral\">")
+          .append(Html.escape(link.type()))
+          .append(": ")
+          .append(Html.escape(who))
+          .append("</span> ");
+    }
+    return badges.toString();
+  }
+
+  private static String renderCompletedTasks(List<CompletedTaskInfo> completedTasks) {
+    if (completedTasks.isEmpty()) {
+      return "<p class=\"flw-empty-state\">No completed tasks yet.</p>";
+    }
+    final StringBuilder items = new StringBuilder();
+    for (final CompletedTaskInfo task : completedTasks) {
+      items
+          .append("<div class=\"flw-task-card\"><div class=\"flw-task-name\">")
+          .append(Html.escape(task.name()))
+          .append("</div><span class=\"flw-badge flw-badge-neutral\">assignee: ")
+          .append(task.assignee() != null ? Html.escape(task.assignee()) : "unassigned")
+          .append("</span> <span class=\"flw-badge flw-badge-neutral\">duration: ")
+          .append(formatMillis(task.durationMillis()))
+          .append("</span> ")
+          .append(
+              task.deleteReason() != null
+                  ? "<span class=\"flw-badge flw-badge-error\">deleted: "
+                      + Html.escape(task.deleteReason())
+                      + "</span>"
+                  : "<span class=\"flw-badge flw-badge-active\">completed</span>")
           .append("</div>");
     }
     return items.toString();
@@ -344,7 +534,8 @@ final class InstanceDetailHandler implements HttpHandler {
           .append("<li class=\"flw-timeline-item\"><span class=\"flw-timeline-dot")
           .append(running ? " flw-timeline-dot-running" : "")
           .append("\"></span><div class=\"flw-timeline-name\">")
-          .append(Html.escape(entry.activityName() != null ? entry.activityName() : entry.activityId()))
+          .append(
+              Html.escape(entry.activityName() != null ? entry.activityName() : entry.activityId()))
           .append("</div><div class=\"flw-timeline-meta\"><time datetime=\"")
           .append(entry.startTime())
           .append("\">")
@@ -353,7 +544,11 @@ final class InstanceDetailHandler implements HttpHandler {
           .append(
               running
                   ? " &mdash; still running"
-                  : " &mdash; <time datetime=\"" + entry.endTime() + "\">" + entry.endTime() + "</time>")
+                  : " &mdash; <time datetime=\""
+                      + entry.endTime()
+                      + "\">"
+                      + entry.endTime()
+                      + "</time>")
           .append(" (")
           .append(formatDuration(entry.startTime(), entry.endTime()))
           .append(")</div></li>");
@@ -392,7 +587,14 @@ final class InstanceDetailHandler implements HttpHandler {
       return "";
     }
     final Duration duration = Duration.between(start, end != null ? end : Instant.now());
-    final long totalSeconds = Math.max(duration.getSeconds(), 0);
+    return formatMillis(Math.max(duration.toMillis(), 0));
+  }
+
+  private static String formatMillis(Long millis) {
+    if (millis == null) {
+      return "?";
+    }
+    final long totalSeconds = millis / 1000;
     if (totalSeconds < 60) {
       return totalSeconds + "s";
     }

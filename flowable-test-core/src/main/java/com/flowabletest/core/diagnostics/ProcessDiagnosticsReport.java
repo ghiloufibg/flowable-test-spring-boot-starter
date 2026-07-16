@@ -14,12 +14,19 @@ public record ProcessDiagnosticsReport(
     String processInstanceId,
     String processDefinitionKey,
     Integer processDefinitionVersion,
+    String processDefinitionName,
+    String processDefinitionCategory,
+    String deploymentId,
+    String bpmnResourceName,
+    Instant deploymentTime,
     String businessKey,
+    String superProcessInstanceId,
     boolean active,
     List<ActivityInfo> currentActivities,
     Map<String, String> variables,
     List<ActivityTrailEntry> activityTrail,
     List<PendingTaskInfo> pendingTasks,
+    List<CompletedTaskInfo> completedTasks,
     List<FailedJobInfo> failedJobs) {
 
   public record ActivityInfo(String activityId, String activityName, String activityType) {}
@@ -28,7 +35,19 @@ public record ProcessDiagnosticsReport(
       String activityId, String activityName, Instant startTime, Instant endTime) {}
 
   public record PendingTaskInfo(
-      String taskId, String name, String assignee, List<String> candidateGroups) {}
+      String taskId,
+      String name,
+      String assignee,
+      List<String> candidateGroups,
+      Instant dueDate,
+      int priority,
+      List<IdentityLinkInfo> identityLinks) {}
+
+  public record CompletedTaskInfo(
+      String taskId, String name, String assignee, Long durationMillis, String deleteReason) {}
+
+  /** One {@code IdentityLinkType} entry (assignee, candidate, owner, participant, ...). */
+  public record IdentityLinkInfo(String type, String userId, String groupId) {}
 
   public record FailedJobInfo(
       String jobId,
