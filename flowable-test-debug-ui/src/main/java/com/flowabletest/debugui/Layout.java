@@ -112,6 +112,8 @@ final class Layout {
         .flw-badge-ended { background: var(--flw-bg-muted); color: var(--flw-text-muted); border: 1px solid var(--flw-border); }
         .flw-badge-error { background: var(--flw-error-bg); color: var(--flw-red); }
         .flw-badge-neutral { background: var(--flw-blue-bg); color: #1d5d6d; }
+        .flw-failedjob-banner { border: none; cursor: pointer; }
+        .flw-failedjob-banner:hover { filter: brightness(0.95); }
 
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--flw-border); font-size: 13px; }

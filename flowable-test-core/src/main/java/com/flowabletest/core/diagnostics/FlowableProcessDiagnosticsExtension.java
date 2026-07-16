@@ -2,6 +2,7 @@ package com.flowabletest.core.diagnostics;
 
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
@@ -16,13 +17,21 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
  * test touched to the failure as a suppressed {@link ProcessDiagnosticsAttachment}. Triggers on any
  * thrown failure, not just failures raised by this starter's own assertions or harness.
  *
+ * <p>Also records the current test's class/method name into {@link ProcessInstanceTracker}'s static
+ * test-origin {@code ThreadLocal} around each test method, so a debug-UI or diagnostics consumer
+ * can show which test started a given process instance. Set/cleared unconditionally (not gated
+ * behind the bean lookups below) since it's a cheap, Spring-independent operation, and JUnit 5
+ * guarantees {@link #afterEach} runs whenever the matching {@link #beforeEach} ran, regardless of
+ * test outcome.
+ *
  * <p>Wired automatically by {@code @FlowableProcessTest}; a consumer never registers this extension
  * directly. Both beans are looked up defensively ({@code getIfAvailable()}, never a hard lookup),
  * so a disabled {@code flowable.test.diagnostics.enabled=false}, or no Spring context yet, degrades
  * to a silent no-op. A failure while collecting diagnostics is logged and swallowed, never allowed
  * to replace or mask the original test failure.
  */
-public final class FlowableProcessDiagnosticsExtension implements BeforeEachCallback, TestWatcher {
+public final class FlowableProcessDiagnosticsExtension
+    implements BeforeEachCallback, AfterEachCallback, TestWatcher {
 
   private static final Logger log =
       LoggerFactory.getLogger(FlowableProcessDiagnosticsExtension.class);
@@ -30,6 +39,15 @@ public final class FlowableProcessDiagnosticsExtension implements BeforeEachCall
   @Override
   public void beforeEach(ExtensionContext context) {
     tracker(context).ifPresent(ProcessInstanceTracker::reset);
+    ProcessInstanceTracker.beginTestOrigin(
+        context.getRequiredTestClass().getSimpleName()
+            + "."
+            + context.getRequiredTestMethod().getName());
+  }
+
+  @Override
+  public void afterEach(ExtensionContext context) {
+    ProcessInstanceTracker.endTestOrigin();
   }
 
   @Override

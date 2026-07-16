@@ -74,6 +74,7 @@ public class FlowableTestDiagnosticsAutoConfiguration {
       HistoryService historyService,
       ManagementService managementService,
       RepositoryService repositoryService,
+      ProcessInstanceTracker processInstanceTracker,
       FlowableTestDiagnosticsProperties properties) {
     return new ProcessDiagnosticsCollector(
         runtimeService,
@@ -81,6 +82,7 @@ public class FlowableTestDiagnosticsAutoConfiguration {
         historyService,
         managementService,
         repositoryService,
+        processInstanceTracker,
         properties.maxActivityTrailEntries(),
         properties.maxVariableValueLength(),
         properties.maxVariableHistoryEntries(),

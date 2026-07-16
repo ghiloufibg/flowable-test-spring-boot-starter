@@ -54,7 +54,8 @@ import org.flowable.variable.api.history.HistoricVariableInstance;
  * Turns a process instance ID into a full {@link ProcessDiagnosticsReport} snapshot -- process
  * definition metadata, current activity (including multi-instance loop counters and, for a call
  * activity, the spawned child instance ID), variable history, gateway trace, activity trail,
- * pending and completed tasks, and both pending and dead-letter job state. Invoked by {@link
+ * pending and completed tasks, both pending and dead-letter job state, and which test started the
+ * instance (via {@link ProcessInstanceTracker#testOriginFor}). Invoked by {@link
  * FlowableProcessDiagnosticsExtension} and by {@code ProcessTestHarness} whenever a test fails; the
  * resulting report is rendered by {@link ProcessDiagnosticsFormatter}. Dead-letter jobs are the
  * highest-value field here: an async service task that throws does not fail the test directly, it
@@ -92,6 +93,7 @@ public final class ProcessDiagnosticsCollector {
   private final HistoryService historyService;
   private final ManagementService managementService;
   private final RepositoryService repositoryService;
+  private final ProcessInstanceTracker processInstanceTracker;
   private final int maxActivityTrailEntries;
   private final int maxVariableValueLength;
   private final int maxVariableHistoryEntries;
@@ -104,6 +106,7 @@ public final class ProcessDiagnosticsCollector {
       HistoryService historyService,
       ManagementService managementService,
       RepositoryService repositoryService,
+      ProcessInstanceTracker processInstanceTracker,
       int maxActivityTrailEntries,
       int maxVariableValueLength,
       int maxVariableHistoryEntries,
@@ -114,6 +117,7 @@ public final class ProcessDiagnosticsCollector {
     this.historyService = historyService;
     this.managementService = managementService;
     this.repositoryService = repositoryService;
+    this.processInstanceTracker = processInstanceTracker;
     this.maxActivityTrailEntries = maxActivityTrailEntries;
     this.maxVariableValueLength = maxVariableValueLength;
     this.maxVariableHistoryEntries = maxVariableHistoryEntries;
@@ -186,7 +190,8 @@ public final class ProcessDiagnosticsCollector {
         pendingTasks(processInstanceId),
         completedTasks(processInstanceId),
         includeFailedJobs ? failedJobs(processInstanceId) : List.of(),
-        pendingJobs(processInstanceId));
+        pendingJobs(processInstanceId),
+        processInstanceTracker.testOriginFor(processInstanceId));
   }
 
   private ProcessDefinition processDefinition(String processDefinitionId) {

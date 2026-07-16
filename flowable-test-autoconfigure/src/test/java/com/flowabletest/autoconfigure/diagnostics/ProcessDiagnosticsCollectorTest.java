@@ -6,6 +6,7 @@ import com.flowabletest.autoconfigure.testapp.SampleFlowableApplication;
 import com.flowabletest.core.annotation.FlowableProcessTest;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsCollector;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport;
+import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
 import com.flowabletest.core.harness.ProcessTestHarness;
 import java.io.Serializable;
 import java.util.List;
@@ -39,6 +40,7 @@ class ProcessDiagnosticsCollectorTest {
   @Autowired ManagementService managementService;
   @Autowired ProcessDiagnosticsCollector collector;
   @Autowired ProcessTestHarness harness;
+  @Autowired ProcessInstanceTracker processInstanceTracker;
 
   @BeforeEach
   void deployDiagnosticsProcesses() {
@@ -58,6 +60,17 @@ class ProcessDiagnosticsCollectorTest {
         == 0) {
       repositoryService.createDeployment().addClasspathResource(classpathResource).deploy();
     }
+  }
+
+  @Test
+  void reportsTheOriginatingTestForASynchronouslyStartedInstance() {
+    final ProcessInstance instance = runtimeService.startProcessInstanceByKey("diagnosticsProcess");
+
+    final ProcessDiagnosticsReport report = collector.collect(instance.getId());
+
+    assertThat(report.testOrigin())
+        .isEqualTo(
+            "ProcessDiagnosticsCollectorTest.reportsTheOriginatingTestForASynchronouslyStartedInstance");
   }
 
   @Test
@@ -112,6 +125,7 @@ class ProcessDiagnosticsCollectorTest {
             historyService,
             managementService,
             repositoryService,
+            processInstanceTracker,
             20,
             10,
             50,
@@ -135,6 +149,7 @@ class ProcessDiagnosticsCollectorTest {
             historyService,
             managementService,
             repositoryService,
+            processInstanceTracker,
             20,
             500,
             50,

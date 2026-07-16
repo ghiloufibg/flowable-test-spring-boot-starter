@@ -183,6 +183,7 @@ class ProcessTestHarnessTest {
             historyService,
             managementService,
             repositoryService,
+            null,
             20,
             500,
             50,

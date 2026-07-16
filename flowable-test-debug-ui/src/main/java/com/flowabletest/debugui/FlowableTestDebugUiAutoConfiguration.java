@@ -59,6 +59,7 @@ public class FlowableTestDebugUiAutoConfiguration {
         new InstanceDetailHandler(processDiagnosticsCollector, processInstanceTracker),
         new DiagramImageHandler(diagramRenderer),
         new DiagnosticsTextHandler(processDiagnosticsCollector),
+        new AssertionSnippetTextHandler(processDiagnosticsCollector),
         new DefinitionSourceHandler(processDiagnosticsCollector, repositoryService),
         new StaticResourceHandler(),
         applicationContext.getId());

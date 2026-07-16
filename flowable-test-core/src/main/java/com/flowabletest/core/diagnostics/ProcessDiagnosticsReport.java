@@ -8,7 +8,9 @@ import java.util.Map;
  * A point-in-time snapshot of one process instance's BPMN state, produced by {@link
  * ProcessDiagnosticsCollector} and rendered by {@link ProcessDiagnosticsFormatter} for attaching to
  * test-failure output. Deliberately domain-blind: every field is a generic Flowable concept
- * (activity ID, variable name, candidate group, job ID), never a project-specific one.
+ * (activity ID, variable name, candidate group, job ID), never a project-specific one -- except
+ * {@link #testOrigin()}, which is the one field that names a test, and only ever {@code null} or a
+ * {@code SimpleClassName.methodName} string, never anything project-specific either.
  */
 public record ProcessDiagnosticsReport(
     String processInstanceId,
@@ -30,7 +32,8 @@ public record ProcessDiagnosticsReport(
     List<PendingTaskInfo> pendingTasks,
     List<CompletedTaskInfo> completedTasks,
     List<FailedJobInfo> failedJobs,
-    List<PendingJobInfo> pendingJobs) {
+    List<PendingJobInfo> pendingJobs,
+    String testOrigin) {
 
   public record ActivityInfo(
       String activityId,

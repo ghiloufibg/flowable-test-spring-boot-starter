@@ -33,6 +33,7 @@ public final class DebugUiServer implements SmartLifecycle {
   private static final String INSTANCES_PATH_PREFIX = "/instances/";
   private static final String DIAGRAM_PATH_SUFFIX = "/diagram.png";
   private static final String DIAGNOSTICS_TEXT_PATH_SUFFIX = "/diagnostics.txt";
+  private static final String ASSERTION_SNIPPET_PATH_SUFFIX = "/assertion.txt";
   private static final String DEFINITION_XML_PATH_SUFFIX = "/definition.xml";
 
   private final DebugUiProperties properties;
@@ -40,6 +41,7 @@ public final class DebugUiServer implements SmartLifecycle {
   private final InstanceDetailHandler instanceDetailHandler;
   private final DiagramImageHandler diagramImageHandler;
   private final DiagnosticsTextHandler diagnosticsTextHandler;
+  private final AssertionSnippetTextHandler assertionSnippetTextHandler;
   private final DefinitionSourceHandler definitionSourceHandler;
   private final StaticResourceHandler staticResourceHandler;
   private final String applicationContextId;
@@ -51,6 +53,7 @@ public final class DebugUiServer implements SmartLifecycle {
       InstanceDetailHandler instanceDetailHandler,
       DiagramImageHandler diagramImageHandler,
       DiagnosticsTextHandler diagnosticsTextHandler,
+      AssertionSnippetTextHandler assertionSnippetTextHandler,
       DefinitionSourceHandler definitionSourceHandler,
       StaticResourceHandler staticResourceHandler,
       String applicationContextId) {
@@ -59,6 +62,7 @@ public final class DebugUiServer implements SmartLifecycle {
     this.instanceDetailHandler = instanceDetailHandler;
     this.diagramImageHandler = diagramImageHandler;
     this.diagnosticsTextHandler = diagnosticsTextHandler;
+    this.assertionSnippetTextHandler = assertionSnippetTextHandler;
     this.definitionSourceHandler = definitionSourceHandler;
     this.staticResourceHandler = staticResourceHandler;
     this.applicationContextId = applicationContextId;
@@ -84,6 +88,8 @@ public final class DebugUiServer implements SmartLifecycle {
             diagramImageHandler.handle(exchange);
           } else if (path.endsWith(DIAGNOSTICS_TEXT_PATH_SUFFIX)) {
             diagnosticsTextHandler.handle(exchange);
+          } else if (path.endsWith(ASSERTION_SNIPPET_PATH_SUFFIX)) {
+            assertionSnippetTextHandler.handle(exchange);
           } else if (path.endsWith(DEFINITION_XML_PATH_SUFFIX)) {
             definitionSourceHandler.handle(exchange);
           } else {

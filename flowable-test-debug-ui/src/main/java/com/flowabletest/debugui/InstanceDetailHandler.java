@@ -102,6 +102,7 @@ final class InstanceDetailHandler implements HttpHandler {
           <div class="flw-breadcrumb-row">
             <p class="flw-breadcrumb"><a href="/">&laquo; all instances</a></p>
             <button @click="copyDiagnostics('%s')">Copy diagnostics</button>
+            <button @click="copyAssertionSnippet('%s')">Copy as assertion</button>
           </div>
           %s
           <div class="flw-tabs">
@@ -150,8 +151,16 @@ final class InstanceDetailHandler implements HttpHandler {
         <script>
           function flwDebugPage() {
             const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+            const TAB_IDS = ['diagram', 'variables', 'variablehistory', 'tasks', 'completed', 'history', 'gatewaytrace', 'failedjobs', 'pendingjobs'];
+            const initialTab = () => {
+              const fromQuery = new URLSearchParams(location.search).get('tab');
+              if (TAB_IDS.includes(fromQuery)) return fromQuery;
+              const fromSession = sessionStorage.getItem('flw-active-tab');
+              if (TAB_IDS.includes(fromSession)) return fromSession;
+              return 'diagram';
+            };
             return {
-              activeTab: sessionStorage.getItem('flw-active-tab') || 'diagram',
+              activeTab: initialTab(),
               paused: false,
               refreshRemaining: 3,
               toastMessage: '',
@@ -166,13 +175,18 @@ final class InstanceDetailHandler implements HttpHandler {
                 const savedScroll = sessionStorage.getItem('flw-scroll');
                 if (savedScroll) window.scrollTo(0, parseInt(savedScroll, 10));
                 this.updateRelativeTimes();
+                this.$watch('activeTab', (value) => {
+                  sessionStorage.setItem('flw-active-tab', value);
+                  const url = new URL(location.href);
+                  url.searchParams.set('tab', value);
+                  history.replaceState(null, '', url);
+                });
                 setInterval(() => {
                   this.updateRelativeTimes();
                   if (this.paused) return;
                   this.refreshRemaining--;
                   if (this.refreshRemaining <= 0) {
                     sessionStorage.setItem('flw-scroll', String(window.scrollY));
-                    sessionStorage.setItem('flw-active-tab', this.activeTab);
                     location.reload();
                   }
                 }, 1000);
@@ -200,6 +214,16 @@ final class InstanceDetailHandler implements HttpHandler {
                     this.toast('Diagnostics copied to clipboard');
                   })
                   .catch(() => this.toast('Failed to copy diagnostics'));
+              },
+
+              copyAssertionSnippet(processInstanceId) {
+                fetch('/instances/' + processInstanceId + '/assertion.txt')
+                  .then((response) => response.text())
+                  .then((text) => {
+                    navigator.clipboard.writeText(text);
+                    this.toast('Assertion snippet copied to clipboard');
+                  })
+                  .catch(() => this.toast('Failed to copy assertion snippet'));
               },
 
               toggleDefinitionSource(processInstanceId) {
@@ -252,7 +276,7 @@ final class InstanceDetailHandler implements HttpHandler {
                 } else if (event.key === 'r') {
                   location.reload();
                 } else if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(event.key)) {
-                  this.activeTab = ['diagram', 'variables', 'variablehistory', 'tasks', 'completed', 'history', 'gatewaytrace', 'failedjobs', 'pendingjobs'][Number(event.key) - 1];
+                  this.activeTab = TAB_IDS[Number(event.key) - 1];
                 }
               },
             };
@@ -266,6 +290,7 @@ final class InstanceDetailHandler implements HttpHandler {
             escapedId,
             Layout.STYLE,
             Layout.topBar(refreshIndicatorMarkup()),
+            escapedId,
             escapedId,
             renderHeader(escapedId, report, childInstanceIds),
             report.variables().size(),
@@ -303,6 +328,7 @@ final class InstanceDetailHandler implements HttpHandler {
           <div class="flw-detail-title">
             <span class="flw-badge %s">%s</span>
             <h1>%s <span class="flw-version">v%s</span></h1>
+            %s
           </div>
           %s
           <div class="flw-meta-row">
@@ -318,6 +344,10 @@ final class InstanceDetailHandler implements HttpHandler {
               <span class="flw-meta-label">Deployed</span>
               <div class="flw-meta-value">%s</div>
             </div>
+            <div>
+              <span class="flw-meta-label">Started by</span>
+              <div class="flw-meta-value">%s</div>
+            </div>
           </div>
           %s
           %s
@@ -328,13 +358,27 @@ final class InstanceDetailHandler implements HttpHandler {
             report.active() ? "&#9679; Active" : "Ended",
             Html.escape(report.processDefinitionKey()),
             report.processDefinitionVersion(),
+            renderFailedJobBanner(report.failedJobs()),
             renderDefinitionSubtitle(report),
             escapedId,
             escapedId,
             report.businessKey() != null ? Html.escape(report.businessKey()) : "&mdash;",
             renderTimeOrDash(report.deploymentTime()),
+            report.testOrigin() != null ? Html.escape(report.testOrigin()) : "&mdash;",
             renderLineage(report, childInstanceIds),
             renderCurrentActivities(report.currentActivities()));
+  }
+
+  private static String renderFailedJobBanner(List<FailedJobInfo> failedJobs) {
+    if (failedJobs.isEmpty()) {
+      return "";
+    }
+    return """
+        <button class="flw-badge flw-badge-error flw-failedjob-banner" @click="activeTab = 'failedjobs'">
+          &#9888; %d failed job(s)
+        </button>
+        """
+        .formatted(failedJobs.size());
   }
 
   private static String renderDefinitionSubtitle(ProcessDiagnosticsReport report) {

@@ -62,6 +62,7 @@ class ProcessInstanceAssertTest {
             historyService,
             managementService,
             repositoryService,
+            null,
             20,
             500,
             50,

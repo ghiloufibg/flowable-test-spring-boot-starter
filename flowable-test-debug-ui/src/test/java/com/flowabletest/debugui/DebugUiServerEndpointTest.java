@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * Proves the three routes actually work end to end over real HTTP -- not just that the handler
+ * Proves the debug UI's routes actually work end to end over real HTTP -- not just that the handler
  * classes compile -- against the {@link DebugUiServer} bean this module's own {@code
  * application.yml} (enabled by default) already started.
  */
@@ -99,6 +99,29 @@ class DebugUiServerEndpointTest {
 
     assertThat(response.statusCode()).isEqualTo(200);
     assertThat(response.headers().firstValue("Content-Type")).hasValue("image/png");
+  }
+
+  @Test
+  void assertionSnippetEndpointReturnsAPasteableSnippetForTheInstancesCurrentState()
+      throws Exception {
+    final ProcessInstance instance =
+        runtimeService.startProcessInstanceByKey(
+            "diagramFixtureProcess", Map.of("orderId", "abc-123"));
+
+    final HttpResponse<String> response = get("/instances/" + instance.getId() + "/assertion.txt");
+
+    assertThat(response.statusCode()).isEqualTo(200);
+    assertThat(response.body())
+        .contains("processTestHarness.assertThat(\"" + instance.getId() + "\")")
+        .contains(".isActive()")
+        .contains(".hasVariable(\"orderId\", \"abc-123\")");
+  }
+
+  @Test
+  void assertionSnippetEndpointReturns404ForAnUnknownInstance() throws Exception {
+    final HttpResponse<String> response = get("/instances/does-not-exist/assertion.txt");
+
+    assertThat(response.statusCode()).isEqualTo(404);
   }
 
   @Test
