@@ -182,15 +182,6 @@ final class Layout {
           background: var(--flw-bg-muted); color: var(--flw-text-muted); font-size: 11px;
         }
         .flw-tab-btn-active .flw-tab-count { background: var(--flw-blue-bg); color: var(--flw-teal); }
-        .flw-tab-panel { display: none; }
-        .flw-tab-active { display: block; animation: flwFadeIn .15s ease; }
-        @keyframes flwFadeIn {
-          from { opacity: 0; transform: translateY(3px); }
-          to { opacity: 1; transform: none; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .flw-tab-active { animation: none; }
-        }
 
         .flw-diagram-card { padding: 20px; text-align: center; }
         .flw-diagram-img { max-width: 100%; cursor: zoom-in; border-radius: 4px; }

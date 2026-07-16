@@ -17,10 +17,14 @@ import java.util.Map;
 /**
  * {@code GET /instances/{id}} -- diagram, variables, current activities, pending tasks, activity
  * trail, and failed jobs for one process instance, all sourced from {@link
- * ProcessDiagnosticsCollector#collect(String)} rather than re-querying the engine. The page
- * refreshes itself every few seconds via JavaScript (not a bare {@code <meta refresh>}) so it can
- * preserve scroll position and the selected tab across reloads, since this is a live view, not a
- * point-in-time diagnostics attachment.
+ * ProcessDiagnosticsCollector#collect(String)} rather than re-querying the engine.
+ *
+ * <p><b>Alpine.js prototype</b> (see {@code claudedocs/bpmn-debug-ui-ux-enhancements-design.md},
+ * "Frontend tooling"): the interactive chrome (tabs, toast, lightbox, refresh countdown/pause,
+ * keyboard shortcuts) is driven by a vendored Alpine.js build ({@code
+ * /static/alpine-3.15.12.min.js}) instead of hand-rolled DOM manipulation, evaluated side by side
+ * against {@link InstanceListHandler}'s plain-vanilla-JS list page. All process data below is
+ * still rendered server-side exactly as before -- only the interactivity layer changed.
  */
 final class InstanceDetailHandler implements HttpHandler {
 
@@ -56,167 +60,153 @@ final class InstanceDetailHandler implements HttpHandler {
           <title>Flowable Test debug UI - %s</title>
           %s
         </head>
-        <body>
+        <body x-data="flwDebugPage()" x-init="init()">
         %s
         <main class="flw-main">
           <div class="flw-breadcrumb-row">
             <p class="flw-breadcrumb"><a href="/">&laquo; all instances</a></p>
-            <button onclick="flwCopyDiagnostics('%s')">Copy diagnostics</button>
+            <button @click="copyDiagnostics('%s')">Copy diagnostics</button>
           </div>
           %s
           <div class="flw-tabs">
-            <button id="flw-tabbtn-diagram" class="flw-tab-btn flw-tab-btn-active" onclick="flwShowTab('diagram')">Diagram</button>
-            <button id="flw-tabbtn-variables" class="flw-tab-btn" onclick="flwShowTab('variables')">Variables<span class="flw-tab-count">%d</span></button>
-            <button id="flw-tabbtn-tasks" class="flw-tab-btn" onclick="flwShowTab('tasks')">Pending tasks<span class="flw-tab-count">%d</span></button>
-            <button id="flw-tabbtn-history" class="flw-tab-btn" onclick="flwShowTab('history')">Activity trail<span class="flw-tab-count">%d</span></button>
-            <button id="flw-tabbtn-failedjobs" class="flw-tab-btn" onclick="flwShowTab('failedjobs')">Failed jobs<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'diagram' }" @click="activeTab = 'diagram'">Diagram</button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'variables' }" @click="activeTab = 'variables'">Variables<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'tasks' }" @click="activeTab = 'tasks'">Pending tasks<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'history' }" @click="activeTab = 'history'">Activity trail<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'failedjobs' }" @click="activeTab = 'failedjobs'">Failed jobs<span class="flw-tab-count">%d</span></button>
           </div>
-          <div id="flw-tab-diagram" class="flw-tab-panel flw-tab-active flw-card">
+          <div x-show="activeTab === 'diagram'" x-transition class="flw-card">
             %s
           </div>
-          <div id="flw-tab-variables" class="flw-tab-panel flw-card">
+          <div x-show="activeTab === 'variables'" x-transition class="flw-card">
             %s
           </div>
-          <div id="flw-tab-tasks" class="flw-tab-panel flw-card">
+          <div x-show="activeTab === 'tasks'" x-transition class="flw-card">
             %s
           </div>
-          <div id="flw-tab-history" class="flw-tab-panel flw-card">
+          <div x-show="activeTab === 'history'" x-transition class="flw-card">
             %s
           </div>
-          <div id="flw-tab-failedjobs" class="flw-tab-panel flw-card">
+          <div x-show="activeTab === 'failedjobs'" x-transition class="flw-card">
             %s
           </div>
         </main>
-        <div id="flw-lightbox" class="flw-lightbox" onclick="flwCloseLightbox()">
-          <img id="flw-lightbox-img" alt="BPMN diagram enlarged">
+        <div class="flw-lightbox" :class="{ 'flw-lightbox-open': lightboxSrc }" @click="closeLightbox()">
+          <img :src="lightboxSrc" alt="BPMN diagram enlarged">
         </div>
-        <div id="flw-toast" class="flw-toast"></div>
+        <div id="flw-toast" class="flw-toast" :class="{ 'flw-toast-visible': toastVisible }" x-text="toastMessage"></div>
         <script>
-          let flwActiveTab = 'diagram';
-          let flwPaused = false;
-          let flwRefreshRemaining = 3;
-          let flwToastTimeout;
+          function flwDebugPage() {
+            const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+            return {
+              activeTab: sessionStorage.getItem('flw-active-tab') || 'diagram',
+              paused: false,
+              refreshRemaining: 3,
+              toastMessage: '',
+              toastVisible: false,
+              toastTimeout: null,
+              lightboxSrc: null,
 
-          function flwShowTab(name) {
-            flwActiveTab = name;
-            document.querySelectorAll('.flw-tab-panel').forEach(function (p) { p.classList.remove('flw-tab-active'); });
-            document.querySelectorAll('.flw-tab-btn').forEach(function (b) { b.classList.remove('flw-tab-btn-active'); });
-            document.getElementById('flw-tab-' + name).classList.add('flw-tab-active');
-            document.getElementById('flw-tabbtn-' + name).classList.add('flw-tab-btn-active');
+              init() {
+                const savedScroll = sessionStorage.getItem('flw-scroll');
+                if (savedScroll) window.scrollTo(0, parseInt(savedScroll, 10));
+                this.updateRelativeTimes();
+                setInterval(() => {
+                  this.updateRelativeTimes();
+                  if (this.paused) return;
+                  this.refreshRemaining--;
+                  if (this.refreshRemaining <= 0) {
+                    sessionStorage.setItem('flw-scroll', String(window.scrollY));
+                    sessionStorage.setItem('flw-active-tab', this.activeTab);
+                    location.reload();
+                  }
+                }, 1000);
+                document.addEventListener('keydown', (event) => this.handleKeydown(event));
+              },
+
+              togglePause() { this.paused = !this.paused; },
+
+              toast(message) {
+                this.toastMessage = message;
+                this.toastVisible = true;
+                clearTimeout(this.toastTimeout);
+                this.toastTimeout = setTimeout(() => { this.toastVisible = false; }, 1800);
+              },
+
+              copy(text) {
+                navigator.clipboard.writeText(text).then(() => this.toast('Copied to clipboard'));
+              },
+
+              copyDiagnostics(processInstanceId) {
+                fetch('/instances/' + processInstanceId + '/diagnostics.txt')
+                  .then((response) => response.text())
+                  .then((text) => {
+                    navigator.clipboard.writeText(text);
+                    this.toast('Diagnostics copied to clipboard');
+                  })
+                  .catch(() => this.toast('Failed to copy diagnostics'));
+              },
+
+              openLightbox(src) { this.lightboxSrc = src; },
+              closeLightbox() { this.lightboxSrc = null; },
+
+              diagramError(img) {
+                const wrapper = img.parentElement;
+                wrapper.innerHTML = '<p class="flw-empty-state">No BPMN diagram available for this '
+                  + 'instance (missing graphical notation).</p>';
+              },
+
+              filterVariables(query) {
+                const needle = query.trim().toLowerCase();
+                document.querySelectorAll('#flw-variables-tbody tr[data-name]').forEach((row) => {
+                  row.style.display = row.dataset.name.toLowerCase().includes(needle) ? '' : 'none';
+                });
+              },
+
+              formatRelativeTime(isoTimestamp) {
+                const elapsedSeconds = Math.round((new Date(isoTimestamp).getTime() - Date.now()) / 1000);
+                if (Math.abs(elapsedSeconds) < 60) return relativeTimeFormatter.format(elapsedSeconds, 'second');
+                const elapsedMinutes = Math.round(elapsedSeconds / 60);
+                if (Math.abs(elapsedMinutes) < 60) return relativeTimeFormatter.format(elapsedMinutes, 'minute');
+                const elapsedHours = Math.round(elapsedMinutes / 60);
+                if (Math.abs(elapsedHours) < 24) return relativeTimeFormatter.format(elapsedHours, 'hour');
+                return relativeTimeFormatter.format(Math.round(elapsedHours / 24), 'day');
+              },
+
+              updateRelativeTimes() {
+                document.querySelectorAll('time[datetime]').forEach((el) => {
+                  el.textContent = this.formatRelativeTime(el.getAttribute('datetime'));
+                  el.title = el.getAttribute('datetime');
+                });
+              },
+
+              handleKeydown(event) {
+                if (event.key === 'Escape') {
+                  this.closeLightbox();
+                  return;
+                }
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+                if (event.key === '/') {
+                  event.preventDefault();
+                  this.activeTab = 'variables';
+                  this.$nextTick(() => document.querySelector('#flw-tab-variables input[type="search"]')?.focus());
+                } else if (event.key === 'r') {
+                  location.reload();
+                } else if (['1', '2', '3', '4', '5'].includes(event.key)) {
+                  this.activeTab = ['diagram', 'variables', 'tasks', 'history', 'failedjobs'][Number(event.key) - 1];
+                }
+              },
+            };
           }
-
-          function flwToast(message) {
-            const toast = document.getElementById('flw-toast');
-            toast.textContent = message;
-            toast.classList.add('flw-toast-visible');
-            clearTimeout(flwToastTimeout);
-            flwToastTimeout = setTimeout(function () { toast.classList.remove('flw-toast-visible'); }, 1800);
-          }
-
-          function flwCopy(text) {
-            navigator.clipboard.writeText(text).then(function () { flwToast('Copied to clipboard'); });
-          }
-
-          function flwCopyDiagnostics(processInstanceId) {
-            fetch('/instances/' + processInstanceId + '/diagnostics.txt')
-              .then(function (response) { return response.text(); })
-              .then(function (text) {
-                navigator.clipboard.writeText(text);
-                flwToast('Diagnostics copied to clipboard');
-              })
-              .catch(function () { flwToast('Failed to copy diagnostics'); });
-          }
-
-          function flwFormatRelativeTime(isoTimestamp) {
-            const elapsedSeconds = Math.max(0, Math.round((Date.now() - new Date(isoTimestamp).getTime()) / 1000));
-            if (elapsedSeconds < 60) return elapsedSeconds + 's ago';
-            const elapsedMinutes = Math.floor(elapsedSeconds / 60);
-            if (elapsedMinutes < 60) return elapsedMinutes + 'm ago';
-            const elapsedHours = Math.floor(elapsedMinutes / 60);
-            if (elapsedHours < 24) return elapsedHours + 'h ago';
-            return Math.floor(elapsedHours / 24) + 'd ago';
-          }
-
-          function flwUpdateRelativeTimes() {
-            document.querySelectorAll('time[datetime]').forEach(function (el) {
-              el.textContent = flwFormatRelativeTime(el.getAttribute('datetime'));
-              el.title = el.getAttribute('datetime');
-            });
-          }
-
-          function flwOpenLightbox(src) {
-            document.getElementById('flw-lightbox-img').src = src;
-            document.getElementById('flw-lightbox').classList.add('flw-lightbox-open');
-          }
-
-          function flwCloseLightbox() {
-            document.getElementById('flw-lightbox').classList.remove('flw-lightbox-open');
-          }
-
-          function flwDiagramError(img) {
-            const wrapper = img.parentElement;
-            wrapper.innerHTML = '<p class="flw-empty-state">No BPMN diagram available for this '
-              + 'instance (missing graphical notation).</p>';
-          }
-
-          function flwFilterVariables(query) {
-            const needle = query.trim().toLowerCase();
-            document.querySelectorAll('#flw-variables-tbody tr[data-name]').forEach(function (row) {
-              row.style.display = row.dataset.name.toLowerCase().includes(needle) ? '' : 'none';
-            });
-          }
-
-          function flwTogglePause(btn) {
-            flwPaused = !flwPaused;
-            btn.textContent = flwPaused ? 'Resume' : 'Pause';
-          }
-
-          setInterval(function () {
-            flwUpdateRelativeTimes();
-            if (flwPaused) return;
-            flwRefreshRemaining--;
-            const el = document.getElementById('flw-refresh-countdown');
-            if (el) el.textContent = flwRefreshRemaining;
-            if (flwRefreshRemaining <= 0) {
-              sessionStorage.setItem('flw-scroll', String(window.scrollY));
-              sessionStorage.setItem('flw-active-tab', flwActiveTab);
-              location.reload();
-            }
-          }, 1000);
-
-          document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-              flwCloseLightbox();
-              return;
-            }
-            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-            if (event.key === '/') {
-              event.preventDefault();
-              flwShowTab('variables');
-              const filterInput = document.querySelector('#flw-tab-variables input[type="search"]');
-              if (filterInput) filterInput.focus();
-            } else if (event.key === 'r') {
-              location.reload();
-            } else if (['1', '2', '3', '4', '5'].includes(event.key)) {
-              flwShowTab(['diagram', 'variables', 'tasks', 'history', 'failedjobs'][Number(event.key) - 1]);
-            }
-          });
-
-          window.addEventListener('DOMContentLoaded', function () {
-            const savedTab = sessionStorage.getItem('flw-active-tab');
-            if (savedTab) flwShowTab(savedTab);
-            const savedScroll = sessionStorage.getItem('flw-scroll');
-            if (savedScroll) window.scrollTo(0, parseInt(savedScroll, 10));
-            flwUpdateRelativeTimes();
-          });
         </script>
+        <script defer src="/static/alpine-3.15.12.min.js"></script>
         </body>
         </html>
         """
         .formatted(
             escapedId,
             Layout.STYLE,
-            Layout.topBar(refreshIndicator()),
+            Layout.topBar(refreshIndicatorMarkup()),
             escapedId,
             renderHeader(escapedId, report),
             report.variables().size(),
@@ -230,11 +220,11 @@ final class InstanceDetailHandler implements HttpHandler {
             renderFailedJobs(report.failedJobs()));
   }
 
-  private static String refreshIndicator() {
+  private static String refreshIndicatorMarkup() {
     return """
         <span class="flw-refresh-indicator">
-          Refreshing in <strong id="flw-refresh-countdown">3</strong>s
-          <button onclick="flwTogglePause(this)">Pause</button>
+          Refreshing in <strong x-text="refreshRemaining">3</strong>s
+          <button @click="togglePause()" x-text="paused ? 'Resume' : 'Pause'">Pause</button>
         </span>
         """;
   }
@@ -249,7 +239,7 @@ final class InstanceDetailHandler implements HttpHandler {
           <div class="flw-meta-row">
             <div>
               <span class="flw-meta-label">Instance ID</span>
-              <div class="flw-meta-value"><code>%s</code><button onclick="flwCopy('%s')">Copy</button></div>
+              <div class="flw-meta-value"><code>%s</code><button @click="copy('%s')">Copy</button></div>
             </div>
             <div>
               <span class="flw-meta-label">Business key</span>
@@ -287,7 +277,7 @@ final class InstanceDetailHandler implements HttpHandler {
   private static String renderDiagram(String escapedId) {
     return """
         <img src="/instances/%s/diagram.png" alt="BPMN diagram" class="flw-diagram-img"
-             onclick="flwOpenLightbox(this.src)" onerror="flwDiagramError(this)">
+             @click="openLightbox($el.src)" @error="diagramError($el)">
         <p class="flw-diagram-hint">Click the diagram to enlarge. The current activity is highlighted.</p>
         """
         .formatted(escapedId);
@@ -309,7 +299,7 @@ final class InstanceDetailHandler implements HttpHandler {
                 .append("</td></tr>"));
     return """
         <div class="flw-toolbar" style="padding: 16px 16px 0;">
-          <input type="search" placeholder="Filter variables&hellip; (press /)" oninput="flwFilterVariables(this.value)">
+          <input type="search" placeholder="Filter variables&hellip; (press /)" @input="filterVariables($event.target.value)">
         </div>
         <table>
           <thead><tr><th>Name</th><th>Value</th></tr></thead>

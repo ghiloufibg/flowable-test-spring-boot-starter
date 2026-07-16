@@ -30,6 +30,7 @@ public final class DebugUiServer implements SmartLifecycle {
   private final InstanceDetailHandler instanceDetailHandler;
   private final DiagramImageHandler diagramImageHandler;
   private final DiagnosticsTextHandler diagnosticsTextHandler;
+  private final StaticResourceHandler staticResourceHandler;
   private final String applicationContextId;
   private HttpServer httpServer;
 
@@ -39,12 +40,14 @@ public final class DebugUiServer implements SmartLifecycle {
       InstanceDetailHandler instanceDetailHandler,
       DiagramImageHandler diagramImageHandler,
       DiagnosticsTextHandler diagnosticsTextHandler,
+      StaticResourceHandler staticResourceHandler,
       String applicationContextId) {
     this.properties = properties;
     this.instanceListHandler = instanceListHandler;
     this.instanceDetailHandler = instanceDetailHandler;
     this.diagramImageHandler = diagramImageHandler;
     this.diagnosticsTextHandler = diagnosticsTextHandler;
+    this.staticResourceHandler = staticResourceHandler;
     this.applicationContextId = applicationContextId;
   }
 
@@ -58,6 +61,7 @@ public final class DebugUiServer implements SmartLifecycle {
       throw new IllegalStateException("Failed to bind the Flowable Test debug UI's HTTP server", e);
     }
     httpServer.createContext("/", instanceListHandler);
+    httpServer.createContext("/static/", staticResourceHandler);
     httpServer.createContext(
         INSTANCES_PATH_PREFIX,
         exchange -> {

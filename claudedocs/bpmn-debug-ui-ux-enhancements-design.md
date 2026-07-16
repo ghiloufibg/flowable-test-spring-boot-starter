@@ -57,6 +57,127 @@ test's process instance end up in this state."
 | WebSocket/SSE live push | Neither Flowable UI actually uses it for this; both poll or reload | The existing JS-driven auto-refresh (countdown + pause, scroll/tab-preserving) already solves "stay current" without adding a persistent-connection protocol to a `com.sun.net.httpserver.HttpServer`-based server that has zero other stateful-connection handling today |
 | Multi-tenant / user management | Flowable Work and Control both sit behind IDM + tenant scoping | Out of scope by the original design's own three-gate activation model (no auth exists or should exist here) |
 
+## Frontend tooling: modern vanilla JS, not a vendored MVC framework
+
+Raised directly: should this module adopt a lightweight client-side MVC framework (Alpine.js,
+petite-vue) to keep the growing JS footprint maintainable, with its file vendored into this
+module's own resources (avoiding the CDN objection a pure "add a `<script src>`" approach would
+raise)? Evaluated on the merits, not dismissed on the CDN point alone.
+
+**The duplication is real.** `InstanceDetailHandler.java` is 418 lines (roughly a third of it one
+inline `<script>` block); `InstanceListHandler.java` is 152. The "don't hijack keyboard shortcuts
+while the user is typing" guard is already copy-pasted near-identically in both
+(`InstanceListHandler.java`, `InstanceDetailHandler.java`) — genuine sign of JS sprawl, not a
+hypothetical concern.
+
+**What vendoring a framework would actually cost, concretely, against this server as it exists
+today:** `DebugUiServer` currently registers exactly two HTTP contexts (`/`, `/instances/`), both
+dynamic — there is no static-file-serving capability at all. Shipping a vendored `alpine.min.js`
+"from the same location as our code" forces a choice neither option is free:
+
+- Serve it properly (a new `StaticResourceHandler`, a new `/static/*` context, classpath-resource
+  reading with path-traversal safety, `Content-Type`/cache headers) — a genuinely new component,
+  not a one-line addition.
+- Or inline the vendored source as a Java string the way `Layout.STYLE` inlines CSS today — but
+  that repeats a 7-17KB payload (Alpine.js gzipped ballpark; petite-vue is smaller, ~7KB) on
+  *every* response, and `InstanceDetailHandler`'s page already auto-refreshes every 3 seconds by
+  design. Fine for ~2KB of CSS: the wrong pattern for a framework-sized script on a 3-second cycle.
+
+Either path also starts a maintenance obligation this repo has no process for yet: the Java side
+has a real, working version-pinning discipline (`flowable.version`, checked across a CI matrix
+spanning the supported range) — vendoring a JS dependency starts that same obligation (which
+version, why, how it gets bumped, what breaks if it doesn't) from zero, with no JS test coverage
+to catch a bad bump.
+
+**Match tool to actual complexity.** The UI is two pages, ~5 tabs, two filter boxes, no
+cross-page reactive state, no component tree of meaningful depth. A reactive framework earns its
+keep when a UI has many small interdependent widgets; this one doesn't — even the parent/child
+instance linking proposed under Tier 3 is anchor tags between two already-rendered pages, not
+shared client state.
+
+**Decision: modern vanilla JS, no framework, framework question deferred (not rejected).**
+Concrete, low-risk wins available today with zero new dependency:
+
+- `Intl.RelativeTimeFormat` (built into every evergreen browser) directly replaces the hand-rolled
+  `flwFormatRelativeTime` in `InstanceDetailHandler.java` — locale-aware "2 minutes ago" for free,
+  one function deleted.
+- `class`-based page controllers replace the current `flw`-prefixed global functions/variables
+  (`flwActiveTab`, `flwShowTab`, `flwPaused`, ...) — that prefix exists purely to fake namespacing
+  in the absence of real encapsulation; a class gives it for free.
+- Optional chaining (`el?.textContent = ...`) cleans up the several `if (el) el.x = ...` guards
+  already present.
+- A shared `Layout.SCRIPT` constant (mirroring the existing `Layout.STYLE` constant for CSS)
+  extracts the duplicated keyboard-guard/filter logic into one place both handlers include —
+  fixing the actual duplication found above without introducing anything new to license, version,
+  or serve statically.
+
+**Revisit trigger, stated explicitly so this isn't re-litigated from scratch:** if a future
+feature needs genuine cross-page *reactive* state (not just "one more tab" or "one more filter
+box"), reopen this decision — and build the static-file-serving capability as part of that
+decision, not as a speculative prerequisite now.
+
+### Prototype: Option B actually built and compared, not just analyzed
+
+Asked directly to build the vendored-framework path before deciding, rather than settle the
+question on analysis alone. Built for real, on `InstanceDetailHandler` specifically (the more
+complex of the two pages — tabs, toast, lightbox, refresh countdown, keyboard shortcuts, variable
+filtering), while `InstanceListHandler` was left as plain vanilla JS, giving one running
+application with both approaches side by side for a fair, working comparison rather than a
+throwaway spike.
+
+**What got built**: Alpine.js `3.15.12` (MIT, verified against its published `LICENSE.md`)
+downloaded once and vendored at `flowable-test-debug-ui/src/main/resources/static/alpine-3.15.12.min.js`
+(46,346 bytes; license text stored alongside as `alpine-3.15.12.LICENSE.md`), served through a new
+`StaticResourceHandler` (`GET /static/{fileName}`, filename restricted to `[A-Za-z0-9._-]+` so
+`../` traversal isn't a resolvable input, `Cache-Control: public, max-age=31536000, immutable`
+since the version is baked into the filename). `InstanceDetailHandler`'s interactive chrome was
+rewritten as a single `x-data="flwDebugPage()"` component on `<body>`: `x-show`/`:class` bindings
+replace every `document.querySelectorAll(...).forEach(...)` class-toggle loop, `x-transition`
+replaces the hand-written `@keyframes flwFadeIn` CSS. All server-rendered data (variables table,
+task cards, activity trail, failed jobs) was left untouched — only the interactivity layer changed,
+per Alpine's own "sprinkle it on top of server-rendered HTML" design intent.
+
+**Verified working end to end in a real browser** (not just read from source): tab switching,
+pause/resume, the diagram lightbox, copy-to-clipboard with toast feedback, the `/`, `1`-`5`, `Esc`,
+`r` keyboard shortcuts (including the typing-guard — shortcuts correctly stay inert while a search
+box has focus), and the vendored file serving correctly from `/static/` with the intended cache
+headers (confirmed via the actual response headers, not assumed).
+
+**Findings:**
+
+- **Genuinely more declarative for the chrome it touched.** Tab switching is now `:class="{
+  'flw-tab-btn-active': activeTab === 'diagram' }"` instead of a manual
+  `querySelectorAll(...).forEach(el => el.classList.remove(...))` pair — this is a real
+  readability win exactly where duplication was found earlier (each tab button's active state used
+  to require two synchronized DOM-query loops; now it's one reactive expression per button).
+- **Line count is a wash, not a reduction.** `InstanceDetailHandler.java` went from 418 to 408
+  lines — Alpine's declarative bindings save lines in some places but the `x-data` object plus
+  directive attributes (`:class`, `x-show`, `@click`, `x-transition`) add them back elsewhere.
+  Adopting Alpine is a readability/maintainability trade, not a size win.
+- **`x-transition`'s default doesn't respect `prefers-reduced-motion` out of the box** — the
+  vanilla version's CSS had an explicit `@media (prefers-reduced-motion: reduce)` guard around the
+  fade animation; Alpine's default transition has no equivalent without extra configuration
+  (`Alpine.data` hooks or manually conditioning the transition classes). This is a real regression
+  found by building the prototype, not something the analysis above anticipated, and would need
+  fixing before this could ship as-is.
+- **The static-serving cost was real but one-time.** `StaticResourceHandler` is 55 lines — not
+  large, but it's 55 lines and one new HTTP route this module didn't need before, confirmed exactly
+  as predicted rather than hypothesized.
+- **No regressions**: `DebugUiServerEndpointTest` and the rest of the existing suite pass unchanged
+  against the Alpine-powered page, since those assertions only check for content substrings, not
+  markup structure.
+
+**Conclusion — analysis held up under an actual build:** the framework earns real, visible
+readability gains exactly where the duplication problem was (declarative tab/visibility state), at
+the cost of one new component (`StaticResourceHandler`), a new vendored-dependency process, and one
+concrete behavioral gap (`prefers-reduced-motion`) that would need closing before shipping. That
+matches the original recommendation's shape — a framework is a genuine, non-hypothetical option for
+this codebase, not a bad fit — but the prototype didn't surface anything that overturns "defer, on
+the stated trigger" as the better default: the win is real but is scoped to the *chrome*, and the
+duplication the framework would fix is fixable in vanilla JS for the reasons already stated. The
+prototype code is intentionally left in the working tree (not deleted) as a reference for
+whichever direction is chosen next.
+
 ## Proposed features, tiered by cost and grounded in verified APIs
 
 ### Tier 1 — presentation-only (no `flowable-test-core` changes)
