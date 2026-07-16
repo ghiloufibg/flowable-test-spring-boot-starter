@@ -59,7 +59,10 @@ final class InstanceDetailHandler implements HttpHandler {
         <body>
         %s
         <main class="flw-main">
-          <p class="flw-breadcrumb"><a href="/">&laquo; all instances</a></p>
+          <div class="flw-breadcrumb-row">
+            <p class="flw-breadcrumb"><a href="/">&laquo; all instances</a></p>
+            <button onclick="flwCopyDiagnostics('%s')">Copy diagnostics</button>
+          </div>
           %s
           <div class="flw-tabs">
             <button id="flw-tabbtn-diagram" class="flw-tab-btn flw-tab-btn-active" onclick="flwShowTab('diagram')">Diagram</button>
@@ -87,10 +90,12 @@ final class InstanceDetailHandler implements HttpHandler {
         <div id="flw-lightbox" class="flw-lightbox" onclick="flwCloseLightbox()">
           <img id="flw-lightbox-img" alt="BPMN diagram enlarged">
         </div>
+        <div id="flw-toast" class="flw-toast"></div>
         <script>
           let flwActiveTab = 'diagram';
           let flwPaused = false;
           let flwRefreshRemaining = 3;
+          let flwToastTimeout;
 
           function flwShowTab(name) {
             flwActiveTab = name;
@@ -100,11 +105,42 @@ final class InstanceDetailHandler implements HttpHandler {
             document.getElementById('flw-tabbtn-' + name).classList.add('flw-tab-btn-active');
           }
 
-          function flwCopy(text, btn) {
-            navigator.clipboard.writeText(text).then(function () {
-              const original = btn.textContent;
-              btn.textContent = 'Copied!';
-              setTimeout(function () { btn.textContent = original; }, 1200);
+          function flwToast(message) {
+            const toast = document.getElementById('flw-toast');
+            toast.textContent = message;
+            toast.classList.add('flw-toast-visible');
+            clearTimeout(flwToastTimeout);
+            flwToastTimeout = setTimeout(function () { toast.classList.remove('flw-toast-visible'); }, 1800);
+          }
+
+          function flwCopy(text) {
+            navigator.clipboard.writeText(text).then(function () { flwToast('Copied to clipboard'); });
+          }
+
+          function flwCopyDiagnostics(processInstanceId) {
+            fetch('/instances/' + processInstanceId + '/diagnostics.txt')
+              .then(function (response) { return response.text(); })
+              .then(function (text) {
+                navigator.clipboard.writeText(text);
+                flwToast('Diagnostics copied to clipboard');
+              })
+              .catch(function () { flwToast('Failed to copy diagnostics'); });
+          }
+
+          function flwFormatRelativeTime(isoTimestamp) {
+            const elapsedSeconds = Math.max(0, Math.round((Date.now() - new Date(isoTimestamp).getTime()) / 1000));
+            if (elapsedSeconds < 60) return elapsedSeconds + 's ago';
+            const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+            if (elapsedMinutes < 60) return elapsedMinutes + 'm ago';
+            const elapsedHours = Math.floor(elapsedMinutes / 60);
+            if (elapsedHours < 24) return elapsedHours + 'h ago';
+            return Math.floor(elapsedHours / 24) + 'd ago';
+          }
+
+          function flwUpdateRelativeTimes() {
+            document.querySelectorAll('time[datetime]').forEach(function (el) {
+              el.textContent = flwFormatRelativeTime(el.getAttribute('datetime'));
+              el.title = el.getAttribute('datetime');
             });
           }
 
@@ -136,6 +172,7 @@ final class InstanceDetailHandler implements HttpHandler {
           }
 
           setInterval(function () {
+            flwUpdateRelativeTimes();
             if (flwPaused) return;
             flwRefreshRemaining--;
             const el = document.getElementById('flw-refresh-countdown');
@@ -147,11 +184,30 @@ final class InstanceDetailHandler implements HttpHandler {
             }
           }, 1000);
 
+          document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+              flwCloseLightbox();
+              return;
+            }
+            if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+            if (event.key === '/') {
+              event.preventDefault();
+              flwShowTab('variables');
+              const filterInput = document.querySelector('#flw-tab-variables input[type="search"]');
+              if (filterInput) filterInput.focus();
+            } else if (event.key === 'r') {
+              location.reload();
+            } else if (['1', '2', '3', '4', '5'].includes(event.key)) {
+              flwShowTab(['diagram', 'variables', 'tasks', 'history', 'failedjobs'][Number(event.key) - 1]);
+            }
+          });
+
           window.addEventListener('DOMContentLoaded', function () {
             const savedTab = sessionStorage.getItem('flw-active-tab');
             if (savedTab) flwShowTab(savedTab);
             const savedScroll = sessionStorage.getItem('flw-scroll');
             if (savedScroll) window.scrollTo(0, parseInt(savedScroll, 10));
+            flwUpdateRelativeTimes();
           });
         </script>
         </body>
@@ -161,6 +217,7 @@ final class InstanceDetailHandler implements HttpHandler {
             escapedId,
             Layout.STYLE,
             Layout.topBar(refreshIndicator()),
+            escapedId,
             renderHeader(escapedId, report),
             report.variables().size(),
             report.pendingTasks().size(),
@@ -192,7 +249,7 @@ final class InstanceDetailHandler implements HttpHandler {
           <div class="flw-meta-row">
             <div>
               <span class="flw-meta-label">Instance ID</span>
-              <div class="flw-meta-value"><code>%s</code><button onclick="flwCopy('%s', this)">Copy</button></div>
+              <div class="flw-meta-value"><code>%s</code><button onclick="flwCopy('%s')">Copy</button></div>
             </div>
             <div>
               <span class="flw-meta-label">Business key</span>
@@ -252,7 +309,7 @@ final class InstanceDetailHandler implements HttpHandler {
                 .append("</td></tr>"));
     return """
         <div class="flw-toolbar" style="padding: 16px 16px 0;">
-          <input type="search" placeholder="Filter variables&hellip;" oninput="flwFilterVariables(this.value)">
+          <input type="search" placeholder="Filter variables&hellip; (press /)" oninput="flwFilterVariables(this.value)">
         </div>
         <table>
           <thead><tr><th>Name</th><th>Value</th></tr></thead>
@@ -298,9 +355,15 @@ final class InstanceDetailHandler implements HttpHandler {
           .append(running ? " flw-timeline-dot-running" : "")
           .append("\"></span><div class=\"flw-timeline-name\">")
           .append(Html.escape(entry.activityName() != null ? entry.activityName() : entry.activityId()))
-          .append("</div><div class=\"flw-timeline-meta\">")
+          .append("</div><div class=\"flw-timeline-meta\"><time datetime=\"")
           .append(entry.startTime())
-          .append(running ? " &mdash; still running" : " &mdash; " + entry.endTime())
+          .append("\">")
+          .append(entry.startTime())
+          .append("</time>")
+          .append(
+              running
+                  ? " &mdash; still running"
+                  : " &mdash; <time datetime=\"" + entry.endTime() + "\">" + entry.endTime() + "</time>")
           .append(" (")
           .append(formatDuration(entry.startTime(), entry.endTime()))
           .append(")</div></li>");

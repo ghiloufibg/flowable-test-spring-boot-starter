@@ -23,11 +23,13 @@ public final class DebugUiServer implements SmartLifecycle {
   private static final Logger log = LoggerFactory.getLogger(DebugUiServer.class);
   private static final String INSTANCES_PATH_PREFIX = "/instances/";
   private static final String DIAGRAM_PATH_SUFFIX = "/diagram.png";
+  private static final String DIAGNOSTICS_TEXT_PATH_SUFFIX = "/diagnostics.txt";
 
   private final DebugUiProperties properties;
   private final InstanceListHandler instanceListHandler;
   private final InstanceDetailHandler instanceDetailHandler;
   private final DiagramImageHandler diagramImageHandler;
+  private final DiagnosticsTextHandler diagnosticsTextHandler;
   private final String applicationContextId;
   private HttpServer httpServer;
 
@@ -36,11 +38,13 @@ public final class DebugUiServer implements SmartLifecycle {
       InstanceListHandler instanceListHandler,
       InstanceDetailHandler instanceDetailHandler,
       DiagramImageHandler diagramImageHandler,
+      DiagnosticsTextHandler diagnosticsTextHandler,
       String applicationContextId) {
     this.properties = properties;
     this.instanceListHandler = instanceListHandler;
     this.instanceDetailHandler = instanceDetailHandler;
     this.diagramImageHandler = diagramImageHandler;
+    this.diagnosticsTextHandler = diagnosticsTextHandler;
     this.applicationContextId = applicationContextId;
   }
 
@@ -57,8 +61,11 @@ public final class DebugUiServer implements SmartLifecycle {
     httpServer.createContext(
         INSTANCES_PATH_PREFIX,
         exchange -> {
-          if (exchange.getRequestURI().getPath().endsWith(DIAGRAM_PATH_SUFFIX)) {
+          final String path = exchange.getRequestURI().getPath();
+          if (path.endsWith(DIAGRAM_PATH_SUFFIX)) {
             diagramImageHandler.handle(exchange);
+          } else if (path.endsWith(DIAGNOSTICS_TEXT_PATH_SUFFIX)) {
+            diagnosticsTextHandler.handle(exchange);
           } else {
             instanceDetailHandler.handle(exchange);
           }

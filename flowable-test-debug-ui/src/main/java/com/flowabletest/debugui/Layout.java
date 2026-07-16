@@ -120,6 +120,16 @@ final class Layout {
           padding: 32px; text-align: center; color: var(--flw-text-muted); font-style: italic;
         }
 
+        .flw-instance-group { margin-bottom: 16px; }
+        .flw-instance-group:last-child { margin-bottom: 0; }
+        .flw-instance-group-header {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 12px 16px; border-bottom: 1px solid var(--flw-border);
+          font-weight: 600; font-size: 13px;
+        }
+        .flw-instance-group-count {
+          color: var(--flw-text-muted); font-weight: 400; font-size: 12px;
+        }
         .flw-instance-list { list-style: none; margin: 0; padding: 0; }
         .flw-instance-row { border-bottom: 1px solid var(--flw-border); }
         .flw-instance-row:last-child { border-bottom: none; }
@@ -128,7 +138,6 @@ final class Layout {
           padding: 13px 16px; color: var(--flw-text);
         }
         .flw-instance-link:hover { background: var(--flw-bg-muted); text-decoration: none; }
-        .flw-instance-icon { color: var(--flw-teal); font-size: 11px; }
 
         details > summary { cursor: pointer; color: var(--flw-teal); font-size: 13px; }
         pre {
@@ -136,7 +145,10 @@ final class Layout {
           overflow-x: auto; font-size: 12px; line-height: 1.5;
         }
 
-        .flw-breadcrumb { margin: 0 0 16px; font-size: 13px; }
+        .flw-breadcrumb-row {
+          display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;
+        }
+        .flw-breadcrumb { margin: 0; font-size: 13px; }
         .flw-detail-header { padding: 20px 24px; margin-bottom: 20px; }
         .flw-detail-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .flw-detail-title h1 { margin: 0; font-size: 20px; }
@@ -171,7 +183,14 @@ final class Layout {
         }
         .flw-tab-btn-active .flw-tab-count { background: var(--flw-blue-bg); color: var(--flw-teal); }
         .flw-tab-panel { display: none; }
-        .flw-tab-active { display: block; }
+        .flw-tab-active { display: block; animation: flwFadeIn .15s ease; }
+        @keyframes flwFadeIn {
+          from { opacity: 0; transform: translateY(3px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .flw-tab-active { animation: none; }
+        }
 
         .flw-diagram-card { padding: 20px; text-align: center; }
         .flw-diagram-img { max-width: 100%; cursor: zoom-in; border-radius: 4px; }
@@ -202,6 +221,15 @@ final class Layout {
         .flw-timeline-dot-running { background: var(--flw-orange); box-shadow: 0 0 0 1px var(--flw-orange); }
         .flw-timeline-name { font-weight: 600; }
         .flw-timeline-meta { color: var(--flw-text-muted); font-size: 12px; margin-top: 2px; }
+
+        .flw-toast {
+          position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px);
+          background: var(--flw-switcher-base); color: #fff; padding: 10px 18px; border-radius: 6px;
+          font-size: 13px; box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+          opacity: 0; pointer-events: none; transition: opacity .2s ease, transform .2s ease;
+          z-index: 200;
+        }
+        .flw-toast-visible { opacity: 1; transform: translate(-50%, 0); }
       </style>
       """;
 
