@@ -35,6 +35,7 @@ final class Layout {
           --flw-blue-bg: #d8eafc;
         }
         * { box-sizing: border-box; }
+        html, body { height: 100%; }
         body {
           margin: 0;
           font-family: "Roboto", "Segoe UI", Helvetica, Arial, sans-serif;
@@ -65,7 +66,7 @@ final class Layout {
         .flw-topbar a { color: #ccd1d6; }
         .flw-topbar a:hover { color: #fff; }
 
-        .flw-main { max-width: 1080px; margin: 0 auto; padding: 24px 28px 64px; }
+        .flw-main { width: 100%; padding: 24px 32px 64px; }
         .flw-page-header h1 { margin: 0 0 4px; font-size: 22px; }
         .flw-subtitle { margin: 0 0 20px; color: var(--flw-text-secondary); }
 
