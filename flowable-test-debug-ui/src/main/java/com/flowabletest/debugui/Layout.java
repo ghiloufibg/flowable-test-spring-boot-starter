@@ -200,6 +200,14 @@ final class Layout {
         .flw-lightbox-open { display: flex; }
         .flw-lightbox img { max-width: 100%; max-height: 100%; box-shadow: 0 4px 24px rgba(0, 0, 0, .5); }
 
+        .flw-gateway-card { padding: 14px 16px; border-bottom: 1px solid var(--flw-border); }
+        .flw-gateway-card:last-child { border-bottom: none; }
+        .flw-gateway-header { font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .flw-gateway-flows { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+        .flw-gateway-flows li { padding: 3px 0; }
+        .flw-gateway-flow-taken { color: #1a8f68; font-weight: 600; }
+        .flw-gateway-flow-not-taken { color: var(--flw-text-muted); }
+
         .flw-task-card, .flw-failedjob-card {
           padding: 14px 16px; border-bottom: 1px solid var(--flw-border);
         }

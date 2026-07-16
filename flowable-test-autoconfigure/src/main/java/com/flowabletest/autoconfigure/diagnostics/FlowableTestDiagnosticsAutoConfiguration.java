@@ -83,6 +83,7 @@ public class FlowableTestDiagnosticsAutoConfiguration {
         repositoryService,
         properties.maxActivityTrailEntries(),
         properties.maxVariableValueLength(),
+        properties.maxVariableHistoryEntries(),
         properties.includeFailedJobs(),
         properties.redactedVariableNames());
   }

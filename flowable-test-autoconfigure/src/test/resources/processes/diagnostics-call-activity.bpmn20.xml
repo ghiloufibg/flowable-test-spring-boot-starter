@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://flowabletest.com/diagnostics-call-activity">
+
+    <process id="diagnosticsParentProcess" name="Diagnostics Parent Process" isExecutable="true">
+        <startEvent id="startEvent" />
+        <sequenceFlow id="flow1" sourceRef="startEvent" targetRef="delegateReviewCall" />
+
+        <callActivity id="delegateReviewCall" name="Delegate review" calledElement="diagnosticsChildProcess" />
+        <sequenceFlow id="flow2" sourceRef="delegateReviewCall" targetRef="endEvent" />
+
+        <endEvent id="endEvent" />
+    </process>
+
+    <process id="diagnosticsChildProcess" name="Diagnostics Child Process" isExecutable="true">
+        <startEvent id="childStartEvent" />
+        <sequenceFlow id="childFlow1" sourceRef="childStartEvent" targetRef="childReviewTask" />
+
+        <userTask id="childReviewTask" name="Child review" flowable:candidateGroups="reviewers" />
+        <sequenceFlow id="childFlow2" sourceRef="childReviewTask" targetRef="childEndEvent" />
+
+        <endEvent id="childEndEvent" />
+    </process>
+</definitions>

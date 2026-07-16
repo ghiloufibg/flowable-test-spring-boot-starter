@@ -64,6 +64,7 @@ class ProcessInstanceAssertTest {
             repositoryService,
             20,
             500,
+            50,
             true,
             List.of());
     final ProcessInstanceAssert brokenAssert =

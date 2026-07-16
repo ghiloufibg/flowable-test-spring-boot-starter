@@ -34,6 +34,12 @@ public record FlowableTestDiagnosticsProperties(
     /** How many characters of a single process variable's rendered value a snapshot includes. */
     @DefaultValue("500") int maxVariableValueLength,
 
+    /**
+     * How many variable-history entries (across all variables, oldest dropped first) a snapshot
+     * includes.
+     */
+    @DefaultValue("50") int maxVariableHistoryEntries,
+
     /** Whether a diagnostics snapshot includes dead-letter job failures. */
     @DefaultValue("true") boolean includeFailedJobs,
 

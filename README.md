@@ -274,6 +274,7 @@ flowable:
       enabled: true                      # default true
       max-activity-trail-entries: 20     # default 20
       max-variable-value-length: 500     # default 500
+      max-variable-history-entries: 50   # default 50
       include-failed-jobs: true          # default true
       max-tracked-process-instances: 50  # default 50
       redacted-variable-names:           # default: password,token,secret,apikey,authorization,ssn
@@ -320,6 +321,7 @@ tooling both pick up automatically, no consumer-side setup required.
 | `flowable.test.diagnostics.max-tracked-process-instances` | `50` | Cap on how many process instances a single failure runs full diagnostics queries against. |
 | `flowable.test.diagnostics.max-activity-trail-entries` | `20` | How many activity-trail entries a diagnostics snapshot includes. |
 | `flowable.test.diagnostics.max-variable-value-length` | `500` | How many characters of a rendered variable value a snapshot includes. |
+| `flowable.test.diagnostics.max-variable-history-entries` | `50` | How many variable-history entries (across all variables) a snapshot includes. |
 | `flowable.test.diagnostics.include-failed-jobs` | `true` | Whether a snapshot includes dead-letter job failures. |
 | `flowable.test.diagnostics.redacted-variable-names` | `password,token,secret,apikey,authorization,ssn` | Variable names (case-insensitive substring match) rendered as `[REDACTED]`. |
 

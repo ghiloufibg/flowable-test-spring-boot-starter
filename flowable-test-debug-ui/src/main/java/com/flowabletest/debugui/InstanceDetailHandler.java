@@ -6,8 +6,13 @@ import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.ActivityTrailEntry;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.CompletedTaskInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.FailedJobInfo;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.GatewayOutgoingFlow;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.GatewayTraceEntry;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.IdentityLinkInfo;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.MultiInstanceProgress;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.PendingJobInfo;
 import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.PendingTaskInfo;
+import com.flowabletest.core.diagnostics.ProcessDiagnosticsReport.VariableHistoryEntry;
 import com.flowabletest.core.diagnostics.ProcessInstanceTracker;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -18,12 +23,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * {@code GET /instances/{id}} -- process definition metadata, diagram, variables, pending and
- * completed tasks, activity trail, and failed jobs for one process instance, all sourced from
- * {@link ProcessDiagnosticsCollector#collect(String)} rather than re-querying the engine directly.
- * Parent/spawned-instance links are the one piece of data that needs more than a single {@code
- * collect()} call: {@link ProcessInstanceTracker#trackedProcessInstanceIds()} is scanned and each
- * tracked instance's own report consulted for a matching {@code superProcessInstanceId} (see {@code
+ * {@code GET /instances/{id}} -- process definition metadata, diagram, variables and their history,
+ * pending and completed tasks, activity trail, gateway trace, and both failed and pending job state
+ * for one process instance, all sourced from {@link ProcessDiagnosticsCollector#collect(String)}
+ * rather than re-querying the engine directly. Parent/spawned-instance links are the one piece of
+ * data that needs more than a single {@code collect()} call: {@link
+ * ProcessInstanceTracker#trackedProcessInstanceIds()} is scanned and each tracked instance's own
+ * report consulted for a matching {@code superProcessInstanceId} (see {@code
  * claudedocs/bpmn-debug-ui-ux-enhancements-design.md}, Tier 3 item 11).
  *
  * <p><b>Alpine.js prototype</b> (see the same design doc, "Frontend tooling"): the interactive
@@ -101,15 +107,21 @@ final class InstanceDetailHandler implements HttpHandler {
           <div class="flw-tabs">
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'diagram' }" @click="activeTab = 'diagram'">Diagram</button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'variables' }" @click="activeTab = 'variables'">Variables<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'variablehistory' }" @click="activeTab = 'variablehistory'">Variable history<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'tasks' }" @click="activeTab = 'tasks'">Pending tasks<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'completed' }" @click="activeTab = 'completed'">Completed tasks<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'history' }" @click="activeTab = 'history'">Activity trail<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'gatewaytrace' }" @click="activeTab = 'gatewaytrace'">Gateway trace<span class="flw-tab-count">%d</span></button>
             <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'failedjobs' }" @click="activeTab = 'failedjobs'">Failed jobs<span class="flw-tab-count">%d</span></button>
+            <button class="flw-tab-btn" :class="{ 'flw-tab-btn-active': activeTab === 'pendingjobs' }" @click="activeTab = 'pendingjobs'">Pending jobs<span class="flw-tab-count">%d</span></button>
           </div>
           <div x-show="activeTab === 'diagram'" x-transition class="flw-card flw-diagram-card">
             %s
           </div>
           <div x-show="activeTab === 'variables'" x-transition class="flw-card">
+            %s
+          </div>
+          <div x-show="activeTab === 'variablehistory'" x-transition class="flw-card">
             %s
           </div>
           <div x-show="activeTab === 'tasks'" x-transition class="flw-card">
@@ -121,7 +133,13 @@ final class InstanceDetailHandler implements HttpHandler {
           <div x-show="activeTab === 'history'" x-transition class="flw-card">
             %s
           </div>
+          <div x-show="activeTab === 'gatewaytrace'" x-transition class="flw-card">
+            %s
+          </div>
           <div x-show="activeTab === 'failedjobs'" x-transition class="flw-card">
+            %s
+          </div>
+          <div x-show="activeTab === 'pendingjobs'" x-transition class="flw-card">
             %s
           </div>
         </main>
@@ -233,8 +251,8 @@ final class InstanceDetailHandler implements HttpHandler {
                   this.$nextTick(() => document.querySelector('#flw-tab-variables input[type="search"]')?.focus());
                 } else if (event.key === 'r') {
                   location.reload();
-                } else if (['1', '2', '3', '4', '5', '6'].includes(event.key)) {
-                  this.activeTab = ['diagram', 'variables', 'tasks', 'completed', 'history', 'failedjobs'][Number(event.key) - 1];
+                } else if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(event.key)) {
+                  this.activeTab = ['diagram', 'variables', 'variablehistory', 'tasks', 'completed', 'history', 'gatewaytrace', 'failedjobs', 'pendingjobs'][Number(event.key) - 1];
                 }
               },
             };
@@ -251,16 +269,22 @@ final class InstanceDetailHandler implements HttpHandler {
             escapedId,
             renderHeader(escapedId, report, childInstanceIds),
             report.variables().size(),
+            report.variableHistory().size(),
             report.pendingTasks().size(),
             report.completedTasks().size(),
             report.activityTrail().size(),
+            report.gatewayTrace().size(),
             report.failedJobs().size(),
+            report.pendingJobs().size(),
             renderDiagram(escapedId),
             renderVariables(report.variables()),
+            renderVariableHistory(report.variableHistory()),
             renderTasks(report.pendingTasks()),
             renderCompletedTasks(report.completedTasks()),
             renderActivityTrail(report.activityTrail()),
-            renderFailedJobs(report.failedJobs()));
+            renderGatewayTrace(report.gatewayTrace()),
+            renderFailedJobs(report.failedJobs()),
+            renderPendingJobs(report.pendingJobs()));
   }
 
   private static String refreshIndicatorMarkup() {
@@ -379,8 +403,20 @@ final class InstanceDetailHandler implements HttpHandler {
               Html.escape(
                   activity.activityName() != null
                       ? activity.activityName()
-                      : activity.activityId()))
-          .append("</span>");
+                      : activity.activityId()));
+      final MultiInstanceProgress progress = activity.multiInstanceProgress();
+      if (progress != null) {
+        badges
+            .append(" (")
+            .append(progress.nrOfCompletedInstances())
+            .append('/')
+            .append(progress.nrOfInstances())
+            .append(" complete)");
+      }
+      badges.append("</span>");
+      if (activity.calledProcessInstanceId() != null) {
+        badges.append(' ').append(renderInstanceLink(activity.calledProcessInstanceId()));
+      }
     }
     return badges.append("</div>").toString();
   }
@@ -426,6 +462,91 @@ final class InstanceDetailHandler implements HttpHandler {
         </table>
         """
         .formatted(rows);
+  }
+
+  private static String renderVariableHistory(List<VariableHistoryEntry> history) {
+    if (history.isEmpty()) {
+      return "<p class=\"flw-empty-state\">No variable history recorded yet. This requires the "
+          + "engine's <code>flowable.history-level</code> to be <code>full</code>.</p>";
+    }
+    final StringBuilder rows = new StringBuilder();
+    for (int i = history.size() - 1; i >= 0; i--) {
+      final VariableHistoryEntry entry = history.get(i);
+      rows.append("<tr><td class=\"flw-mono\">")
+          .append(renderTimeOrDash(entry.time()))
+          .append("</td><td class=\"flw-mono\">")
+          .append(Html.escape(entry.variableName()))
+          .append("</td><td class=\"flw-mono\">")
+          .append(Html.escape(entry.value()))
+          .append("</td><td class=\"flw-mono\">")
+          .append(entry.revision())
+          .append("</td></tr>");
+    }
+    return """
+        <table>
+          <thead><tr><th>Time</th><th>Variable</th><th>Value</th><th>Revision</th></tr></thead>
+          <tbody>%s</tbody>
+        </table>
+        """
+        .formatted(rows);
+  }
+
+  private static String renderGatewayTrace(List<GatewayTraceEntry> trace) {
+    if (trace.isEmpty()) {
+      return "<p class=\"flw-empty-state\">No gateway transitions recorded yet.</p>";
+    }
+    final StringBuilder items = new StringBuilder();
+    for (final GatewayTraceEntry gateway : trace) {
+      items
+          .append("<div class=\"flw-gateway-card\"><div class=\"flw-gateway-header\">")
+          .append(
+              Html.escape(
+                  gateway.gatewayName() != null ? gateway.gatewayName() : gateway.gatewayId()))
+          .append(" <span class=\"flw-badge flw-badge-neutral\">")
+          .append(Html.escape(gateway.gatewayType()))
+          .append("</span> ")
+          .append(renderTimeOrDash(gateway.time()))
+          .append("</div><ul class=\"flw-gateway-flows\">");
+      for (final GatewayOutgoingFlow flow : gateway.outgoingFlows()) {
+        items
+            .append("<li class=\"")
+            .append(flow.taken() ? "flw-gateway-flow-taken" : "flw-gateway-flow-not-taken")
+            .append("\">")
+            .append(flow.taken() ? "&#10003; taken &rarr; " : "&#10005; not taken &rarr; ")
+            .append(Html.escape(flow.targetActivityName()));
+        if (flow.conditionExpression() != null && !flow.conditionExpression().isBlank()) {
+          items
+              .append(" <code class=\"flw-mono\">")
+              .append(Html.escape(flow.conditionExpression()))
+              .append("</code>");
+        }
+        items.append("</li>");
+      }
+      items.append("</ul></div>");
+    }
+    return items.toString();
+  }
+
+  private static String renderPendingJobs(List<PendingJobInfo> jobs) {
+    if (jobs.isEmpty()) {
+      return "<p class=\"flw-empty-state\">No pending jobs.</p>";
+    }
+    final Instant now = Instant.now();
+    final StringBuilder items = new StringBuilder();
+    for (final PendingJobInfo job : jobs) {
+      final boolean overdue = job.dueDate() != null && job.dueDate().isBefore(now);
+      items
+          .append("<div class=\"flw-task-card\"><div class=\"flw-task-name\">")
+          .append(Html.escape(job.elementName() != null ? job.elementName() : job.elementId()))
+          .append("</div><span class=\"flw-badge flw-badge-neutral\">")
+          .append(Html.escape(job.jobType()))
+          .append("</span> <span class=\"flw-badge flw-badge-neutral\">retries: ")
+          .append(job.retries())
+          .append("</span> ")
+          .append(renderDueDateBadge(job.dueDate(), overdue))
+          .append("</div>");
+    }
+    return items.toString();
   }
 
   private static String renderTasks(List<PendingTaskInfo> tasks) {
@@ -479,7 +600,8 @@ final class InstanceDetailHandler implements HttpHandler {
       // Assignee and candidate-group links already have their own dedicated badges above --
       // everything else (candidate *users*, owner, participant, starter, ...) shows up here.
       final boolean alreadyShown =
-          "assignee".equals(link.type()) || ("candidate".equals(link.type()) && link.groupId() != null);
+          "assignee".equals(link.type())
+              || ("candidate".equals(link.type()) && link.groupId() != null);
       if (alreadyShown) {
         continue;
       }
