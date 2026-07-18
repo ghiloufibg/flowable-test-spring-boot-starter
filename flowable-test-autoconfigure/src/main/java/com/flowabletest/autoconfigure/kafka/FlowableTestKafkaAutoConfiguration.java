@@ -16,12 +16,17 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
  * and Flowable's {@code RuntimeService} are both on the classpath and a {@code ProcessEngine} bean
  * exists. Exposes the broker started by {@link FlowableTestKafkaEnvironmentPostProcessor} as an
  * ordinary bean (for consumers who want {@code @Autowired EmbeddedKafkaBroker}) and registers a
- * {@link KafkaTestBridge} pointed at it. Every bean here is additionally gated by {@link
+ * {@link KafkaTestBridge} pointed at it. The two broker beans are gated by {@link
  * FlowableTestKafkaProvisionedCondition}, matched only when that post-processor actually
  * provisioned a broker for this context -- deliberately not keyed off whether {@code
  * spring.kafka.bootstrap-servers} happens to be set, since a consumer may set that property
  * independently (a real broker, Testcontainers) with no Kafka Event Registry channel descriptors on
- * the classpath at all.
+ * the classpath at all. The {@code KafkaTestBridge} bean uses the broader {@link
+ * FlowableTestKafkaBridgeCondition} instead, so it is still registered when {@code
+ * flowable.test.kafka.enabled=false} and the consumer points {@code spring.kafka.bootstrap-servers}
+ * at a real broker themselves -- provided this project actually declares Kafka Event Registry
+ * channels, the same signal the post-processor itself uses to decide whether to start an embedded
+ * broker at all.
  */
 @AutoConfiguration(
     afterName = {
@@ -82,10 +87,15 @@ public class FlowableTestKafkaAutoConfiguration {
     return broker;
   }
 
-  /** Registers a {@link KafkaTestBridge} wired to the embedded broker's bootstrap servers. */
+  /**
+   * Registers a {@link KafkaTestBridge} wired to whatever {@code spring.kafka.bootstrap-servers}
+   * resolves to -- the starter's own embedded broker, or a real broker the consumer supplied
+   * themselves. See {@link FlowableTestKafkaBridgeCondition} for when each case activates this
+   * bean.
+   */
   @Bean
   @ConditionalOnMissingBean
-  @Conditional(FlowableTestKafkaProvisionedCondition.class)
+  @Conditional(FlowableTestKafkaBridgeCondition.class)
   KafkaTestBridge kafkaTestBridge(
       @Value("${spring.kafka.bootstrap-servers}") String bootstrapServers) {
     return new KafkaTestBridge(bootstrapServers);
