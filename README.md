@@ -175,6 +175,28 @@ flowable:
       broker-scope: shared # shared (default) | per-context
 ```
 
+#### Pointing at a real broker instead
+
+Set `flowable.test.kafka.enabled=false` and point `spring.kafka.bootstrap-servers` at a real broker
+(Docker, CI, Testcontainers) — the starter skips provisioning its own embedded broker and Flowable's
+Kafka Event Registry reads that property exactly as it would in production. `@Autowired
+KafkaTestBridge` still just works, no manual `@Bean` needed, as long as your project declares real
+Kafka Event Registry `*.channel` descriptors (the same signal that decides whether an embedded
+broker gets started at all):
+
+```yaml
+flowable:
+  test:
+    kafka:
+      enabled: false
+spring:
+  kafka:
+    bootstrap-servers: localhost:9093
+```
+
+Topics still need to pre-exist on that broker, or `auto.create.topics.enable=true` set there — the
+starter's own topic auto-provisioning only applies to the embedded broker it starts itself.
+
 ### Declarative HTTP mocking
 
 If `wiremock-standalone` is on your classpath, drop plain WireMock mapping JSON under
