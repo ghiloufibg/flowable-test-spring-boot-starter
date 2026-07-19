@@ -36,7 +36,7 @@ public class FlowableCompatibilityGuardAutoConfiguration {
   @Bean
   InitializingBean flowableCompatibilityGuard(ProcessEngine processEngine) {
     return () -> {
-      final String detected = ProcessEngine.VERSION;
+      final String detected = resolveRuntimeEngineVersion();
       if (!FlowableVersions.isSupported(
           detected, SUPPORTED_MIN_INCLUSIVE, SUPPORTED_MAX_EXCLUSIVE)) {
         throw new IllegalStateException(
@@ -49,6 +49,25 @@ public class FlowableCompatibilityGuardAutoConfiguration {
                     STARTER_VERSION, SUPPORTED_MIN_INCLUSIVE, SUPPORTED_MAX_EXCLUSIVE, detected));
       }
     };
+  }
+
+  /**
+   * Reads {@link ProcessEngine#VERSION} reflectively instead of by direct field access. {@code
+   * VERSION} is a compile-time constant ({@code public static final String}), so a direct reference
+   * (e.g. plain {@code ProcessEngine.VERSION}) gets inlined into this class's own compiled bytecode
+   * at <em>this module's own build time</em> -- always the Flowable version this starter itself was
+   * built against, never whatever {@code flowable-engine} version the consumer's own dependency
+   * management actually resolves at runtime, since {@code provided} scope means that version is
+   * never on this module's compile classpath. Reflection reads the field's live value off the
+   * {@code ProcessEngine} class as loaded from the consumer's own runtime classpath, bypassing that
+   * compile-time inlining entirely.
+   */
+  static String resolveRuntimeEngineVersion() {
+    try {
+      return (String) ProcessEngine.class.getField("VERSION").get(null);
+    } catch (final ReflectiveOperationException e) {
+      throw new IllegalStateException("Failed to read ProcessEngine.VERSION reflectively", e);
+    }
   }
 
   /**
